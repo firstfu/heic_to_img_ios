@@ -856,13 +856,19 @@ struct QualitySettingsPopover: View {
                                     HStack {
                                         Text("較小檔案")
                                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                                            .foregroundColor(AppColors.textTertiary)
+                                            .foregroundColor(Color.dynamic(
+                                                light: AppColors.textTertiary,
+                                                dark: AppColors.darkTextSecondary
+                                            ))
                                         
                                         Spacer()
                                         
                                         Text("較高品質")
                                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                                            .foregroundColor(AppColors.textTertiary)
+                                            .foregroundColor(Color.dynamic(
+                                                light: AppColors.textTertiary,
+                                                dark: AppColors.darkTextSecondary
+                                            ))
                                     }
                                 }
                                 
@@ -874,7 +880,10 @@ struct QualitySettingsPopover: View {
                                     
                                     Text(qualityDescription)
                                         .font(.system(size: 12, weight: .medium, design: .rounded))
-                                        .foregroundColor(AppColors.textSecondary)
+                                        .foregroundColor(Color.dynamic(
+                                            light: AppColors.textSecondary,
+                                            dark: AppColors.darkTextSecondary
+                                        ))
                                 }
                                 .padding(AppSpacing.sm)
                                 .background(
@@ -908,11 +917,17 @@ struct QualitySettingsPopover: View {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text("保留圖片資訊")
                                                 .font(.system(size: 14, weight: .medium, design: .rounded))
-                                                .foregroundColor(AppColors.textPrimary)
+                                                .foregroundColor(Color.dynamic(
+                                                    light: AppColors.textPrimary,
+                                                    dark: AppColors.darkTextPrimary
+                                                ))
                                             
                                             Text("保留 EXIF 資料如拍攝時間、地點等")
                                                 .font(.system(size: 11, weight: .regular, design: .rounded))
-                                                .foregroundColor(AppColors.textSecondary)
+                                                .foregroundColor(Color.dynamic(
+                                                    light: AppColors.textSecondary,
+                                                    dark: AppColors.darkTextSecondary
+                                                ))
                                         }
                                     }
                                 }
@@ -948,11 +963,17 @@ struct QualitySettingsPopover: View {
                                     
                                     Text("檔案大小")
                                         .font(.system(size: 11, weight: .medium, design: .rounded))
-                                        .foregroundColor(AppColors.textSecondary)
+                                        .foregroundColor(Color.dynamic(
+                                            light: AppColors.textSecondary,
+                                            dark: AppColors.darkTextSecondary
+                                        ))
                                     
                                     Text(estimatedSizeText)
                                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                        .foregroundColor(AppColors.textPrimary)
+                                        .foregroundColor(Color.dynamic(
+                                            light: AppColors.textPrimary,
+                                            dark: AppColors.darkTextPrimary
+                                        ))
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, AppSpacing.md)
@@ -969,7 +990,10 @@ struct QualitySettingsPopover: View {
                                     
                                     Text("品質等級")
                                         .font(.system(size: 11, weight: .medium, design: .rounded))
-                                        .foregroundColor(AppColors.textSecondary)
+                                        .foregroundColor(Color.dynamic(
+                                            light: AppColors.textSecondary,
+                                            dark: AppColors.darkTextSecondary
+                                        ))
                                     
                                     HStack(spacing: 2) {
                                         ForEach(0..<qualityStars, id: \.self) { _ in

@@ -129,7 +129,7 @@ class APIService: ObservableObject {
             var errors: [Error] = []
             let totalFiles = files.count
 
-            for (index, file) in files.enumerated() {
+            for (_, file) in files.enumerated() {
                 do {
                     // 轉換單個檔案
                     let result = try await withCheckedThrowingContinuation { continuation in

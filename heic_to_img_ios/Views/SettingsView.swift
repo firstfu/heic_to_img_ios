@@ -85,12 +85,22 @@ struct SettingsView: View {
                 // }
                 
                 // 關於
-                Section("關於應用程式") {
+                Section(header: Text("關於應用程式").foregroundColor(Color.dynamic(
+                    light: AppColors.textSecondary,
+                    dark: AppColors.darkTextSecondary
+                ))) {
                     HStack {
                         Text("版本")
+                            .foregroundColor(Color.dynamic(
+                                light: AppColors.textPrimary,
+                                dark: AppColors.darkTextPrimary
+                            ))
                         Spacer()
                         Text("1.0.0")
-                            .foregroundColor(AppColors.textSecondary)
+                            .foregroundColor(Color.dynamic(
+                                light: AppColors.textSecondary,
+                                dark: AppColors.darkTextSecondary
+                            ))
                     }
                     
                     Button("聯絡我們") {
