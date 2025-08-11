@@ -3,11 +3,13 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 專案概覽
+
 這是一個 iOS 應用程式專案，用於將 HEIC 格式的圖片轉換為其他格式（PNG、JPEG）。應用程式使用 SwiftUI 框架開發，支援 iOS 18.0 以上版本。
 
 ## 建置與執行指令
 
 ### Xcode 專案操作
+
 ```bash
 # 建置專案
 xcodebuild -project heic_to_img_ios.xcodeproj -scheme heic_to_img_ios -configuration Debug build
@@ -30,6 +32,7 @@ xcodebuild test -project heic_to_img_ios.xcodeproj -scheme heic_to_img_ios -dest
 ```
 
 ### SwiftLint（如需要）
+
 ```bash
 # 執行程式碼風格檢查
 swiftlint
@@ -41,12 +44,14 @@ swiftlint --fix
 ## 專案架構
 
 ### 應用程式流程
+
 1. **MainTabView**: 應用程式主導航，包含三個 Tab（轉換、結果、設定）
 2. **ConversionView**: 主要轉換介面，整合 HEICPhotoPicker 和 DropZoneView
 3. **ImageConverter Service**: 處理實際的圖片格式轉換，支援批次處理
 4. **AppState**: 使用 @Observable 管理全局狀態，追蹤轉換進度和結果
 
 ### 核心元件結構
+
 - **heic_to_img_iosApp.swift**: 應用程式入口點，管理全局狀態（ConversionSettings、AppState）
 - **Views/**: SwiftUI 視圖層
   - MainTabView: 主要的 Tab 導航結構
@@ -70,6 +75,7 @@ swiftlint --fix
   - DesignSystem: 設計系統定義（顏色、字型、間距）
 
 ### 技術棧與依賴
+
 - **框架**: SwiftUI、UIKit（橋接）、PhotosUI
 - **圖像處理**: CoreImage、ImageIO
 - **併發處理**: Combine、DispatchQueue、async/await
@@ -79,11 +85,14 @@ swiftlint --fix
 - **專案格式**: Xcode 16.4 檔案系統同步群組（fileSystemSynchronizedGroups）
 
 ### 權限需求
+
 應用程式需要以下權限（需在 Info.plist 中配置）：
+
 - NSPhotoLibraryUsageDescription: 存取相簿讀取 HEIC 照片
 - NSPhotoLibraryAddUsageDescription: 儲存轉換後的照片到相簿
 
 ### 開發注意事項
+
 - 所有註解和使用者介面文字使用繁體中文
 - 使用 iOS 最新版本的 API 和最佳實踐
 - 圖片轉換使用 GPU 加速（通過 CIContext 配置）
@@ -92,6 +101,7 @@ swiftlint --fix
 - DerivedData 已包含在專案中，包含編譯快取和模組快取
 
 ### 相關專案
+
 - **API 專案路徑**: /Users/firstfu/Desktop/heic_to_img_workspace/heic_to_img_api
   - FastAPI 後端服務，提供 HEIC 轉換 REST API
   - 執行指令: `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`
