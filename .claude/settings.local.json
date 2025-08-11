@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Context7__resolve-library-id",
+      "mcp__Context7__get-library-docs",
+      "mcp__magic-ui-component-server__getTextReveal",
+      "Bash(xcodebuild:*)",
+      "Bash(xcrun simctl list:*)",
+      "mcp__magic-ui-component-server__getEffects",
+      "Bash(xcrun simctl boot:*)",
+      "Bash(xcrun simctl install:*)",
+      "Bash(xcrun simctl launch:*)",
+      "Bash(plutil:*)",
+      "Bash(rm:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "additionalDirectories": [
+      "/Users/firstfu/Desktop/heic_to_img_workspace/heic_to_img_api"
+    ]
+  }
+}
