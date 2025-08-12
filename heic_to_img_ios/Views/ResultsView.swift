@@ -30,6 +30,16 @@ struct ResultsView: View {
                                 .padding(.top, 16)
                         }
                         
+                        // 一鍵清除全部按鈕
+                        if !appState.conversionResults.isEmpty {
+                            ClearAllButtonView {
+                                selectedResult = nil
+                                showDeleteConfirmation = true
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
+                        }
+                        
                         // 轉換結果列表
                         ScrollView {
                             LazyVStack(spacing: 12) {
@@ -44,7 +54,7 @@ struct ResultsView: View {
                                 }
                             }
                             .padding(.horizontal, 20)
-                            .padding(.top, 16)
+                            .padding(.top, 12)
                             .padding(.bottom, 100)
                         }
                     }
@@ -103,6 +113,60 @@ struct ResultsView: View {
     private func shareAllResults() {
         let urls = appState.conversionResults.map { $0.outputURL }
         shareFiles(urls: urls, description: "使用 HEIC 轉檔專家轉換的圖片")
+    }
+}
+
+// MARK: - 一鍵清除全部按鈕視圖
+struct ClearAllButtonView: View {
+    let onClearAll: () -> Void
+    
+    var body: some View {
+        Button(action: onClearAll) {
+            HStack(spacing: 12) {
+                Image(systemName: "trash.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                
+                Text("一鍵清除全部")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.red.opacity(0.9),
+                                Color.red.opacity(0.8)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(
+                        Color.red.opacity(0.3),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(
+                color: Color.red.opacity(0.3),
+                radius: 8,
+                x: 0,
+                y: 4
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
