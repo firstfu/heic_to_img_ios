@@ -211,18 +211,18 @@ struct SelectedFilesView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     
     private var gridColumns: [GridItem] {
-        let columnCount = horizontalSizeClass == .regular ? 4 : 2
-        return Array(repeating: GridItem(.flexible(), spacing: AppSpacing.md), count: columnCount)
+        let columnCount = horizontalSizeClass == .regular ? 5 : 3
+        return Array(repeating: GridItem(.flexible(), spacing: 12), count: columnCount)
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
+        VStack(alignment: .leading, spacing: 16) {
             // 標題和操作
             headerView
             
             // 檔案網格
-            ScrollView {
-                LazyVGrid(columns: gridColumns, spacing: AppSpacing.lg) {
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVGrid(columns: gridColumns, spacing: 12) {
                     ForEach(Array(selectedFiles.enumerated()), id: \.element.id) { index, fileItem in
                         FileCardView(
                             fileItem: fileItem,
@@ -230,12 +230,16 @@ struct SelectedFilesView: View {
                             onTap: { toggleSelection(for: index) },
                             onRemove: { removeFile(at: index) }
                         )
-                        .id(fileItem.id) // 確保視圖正確更新
+                        .id(fileItem.id)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.8).combined(with: .opacity),
+                            removal: .scale(scale: 0.8).combined(with: .opacity)
+                        ))
                     }
                 }
-                .padding(.vertical, AppSpacing.xs)
+                .padding(.vertical, 4)
             }
-            .frame(maxHeight: 450) // 增加最大高度以容納更多卡片
+            .frame(maxHeight: 320)
             
             // 轉換按鈕
             ConversionButton(
@@ -244,47 +248,143 @@ struct SelectedFilesView: View {
                 onStartConversion: onStartConversion
             )
         }
-        .padding(AppSpacing.lg)
+        .padding(20)
         .background(
-            // 使用更現代的背景
-            RoundedRectangle(cornerRadius: AppRadius.xl)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.xl)
-                        .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+            ZStack {
+                // 底層漸層背景
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.dynamic(
+                                    light: Color.white,
+                                    dark: Color(red: 25/255, green: 25/255, blue: 35/255)
+                                ),
+                                Color.dynamic(
+                                    light: Color(red: 250/255, green: 250/255, blue: 255/255),
+                                    dark: Color(red: 20/255, green: 20/255, blue: 30/255)
+                                )
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                
+                // 玻璃化效果層
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(.ultraThinMaterial.opacity(0.5))
+            }
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.3),
+                            Color.secondary.opacity(0.1)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
                 )
         )
-        .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
+        .shadow(
+            color: AppColors.primaryBlue.opacity(0.08),
+            radius: 20,
+            x: 0,
+            y: 10
+        )
     }
     
     private var headerView: some View {
         HStack(alignment: .center) {
-            // 標題和統計
-            VStack(alignment: .leading, spacing: 2) {
-                Text("已選圖片")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(AppColors.primaryGradient)
+            // 左側：標題和統計
+            HStack(spacing: 12) {
+                // 圖片堆疊圖標
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    AppColors.primaryBlue.opacity(0.1),
+                                    AppColors.primaryPurple.opacity(0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 36, height: 36)
+                    
+                    Image(systemName: "photo.stack.fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(AppColors.primaryGradient)
+                }
                 
-                Text("\(selectedFiles.count) 個檔案・總計 \(totalFileSize)")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(AppColors.textSecondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("已選圖片")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.dynamic(
+                            light: AppColors.textPrimary,
+                            dark: AppColors.darkTextPrimary
+                        ))
+                    
+                    HStack(spacing: 4) {
+                        // 檔案數量
+                        HStack(spacing: 2) {
+                            Image(systemName: "doc.fill")
+                                .font(.system(size: 10))
+                            Text("\(selectedFiles.count) 個檔案")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                        }
+                        .foregroundColor(AppColors.textSecondary)
+                        
+                        Text("•")
+                            .foregroundColor(AppColors.textTertiary)
+                        
+                        // 總大小
+                        Text(totalFileSize)
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .foregroundColor(AppColors.textSecondary)
+                    }
+                }
             }
             
             Spacer()
             
-            // 操作按鈕
-            HStack(spacing: AppSpacing.sm) {
+            // 右側：操作按鈕
+            HStack(spacing: 8) {
+                // 批量刪除按鈕
                 if !selectedIndices.isEmpty {
                     Button(action: removeSelectedFiles) {
-                        Image(systemName: "trash.fill")
+                        HStack(spacing: 4) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("\(selectedIndices.count)")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(Color.red.opacity(0.9))
+                        )
                     }
-                    .buttonStyle(HeaderActionButtonStyle(color: .red))
+                    .transition(.scale.combined(with: .opacity))
                 }
                 
+                // 清空全部按鈕
                 Button(action: clearAllFiles) {
-                    Image(systemName: "xmark")
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(Color.secondary.opacity(0.6))
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.01))
+                                .frame(width: 32, height: 32)
+                        )
                 }
-                .buttonStyle(HeaderActionButtonStyle(color: .gray))
             }
         }
     }

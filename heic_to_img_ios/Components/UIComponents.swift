@@ -101,34 +101,131 @@ struct FileCardView: View {
     
     @State private var thumbnail: UIImage?
     @State private var isLoading = true
+    @State private var isHovering = false
     
     var body: some View {
-        ZStack {
-            // 縮圖背景
-            thumbnailView
+        ZStack(alignment: .topTrailing) {
+            // 主卡片內容
+            VStack(spacing: 6) {
+                // 縮圖容器
+                ZStack {
+                    thumbnailView
+                        .frame(width: 75, height: 75)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(
+                                    isSelected ?
+                                    LinearGradient(
+                                        colors: [AppColors.primaryBlue, AppColors.primaryPurple],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ) :
+                                    LinearGradient(
+                                        colors: [Color.secondary.opacity(0.2), Color.secondary.opacity(0.2)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: isSelected ? 2.5 : 1
+                                )
+                        )
+                    
+                    // 選中標記
+                    if isSelected {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                ZStack {
+                                    Circle()
+                                        .fill(.white)
+                                        .frame(width: 20, height: 20)
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 20, weight: .medium))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [AppColors.primaryBlue, AppColors.primaryPurple],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                }
+                                .offset(x: 5, y: -5)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+                
+                // 檔案資訊
+                VStack(spacing: 2) {
+                    Text(fileItem.name)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.dynamic(
+                            light: AppColors.textPrimary,
+                            dark: AppColors.darkTextPrimary
+                        ))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    
+                    Text(fileItem.formattedSize)
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .foregroundColor(AppColors.textSecondary)
+                }
+                .padding(.horizontal, 4)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        Color.dynamic(
+                            light: isSelected ? AppColors.primaryBlue.opacity(0.05) : Color.white,
+                            dark: isSelected ? AppColors.primaryBlue.opacity(0.1) : Color(red: 30/255, green: 30/255, blue: 40/255)
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        Color.dynamic(
+                            light: isSelected ? AppColors.primaryBlue.opacity(0.2) : Color.secondary.opacity(0.1),
+                            dark: isSelected ? AppColors.primaryBlue.opacity(0.3) : Color.secondary.opacity(0.2)
+                        ),
+                        lineWidth: 1
+                    )
+            )
             
-            // 內容疊加
-            overlayContent
-            
-            // 移除按鈕
-            removeButton
-            
-            // 選中光暈效果
-            if isSelected {
-                selectionGlow
+            // 移除按鈕（懸停或選中時顯示）
+            if isHovering || isSelected {
+                Button(action: onRemove) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.red.opacity(0.9))
+                            .frame(width: 18, height: 18)
+                        
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .offset(x: 5, y: -5)
+                .transition(.scale.combined(with: .opacity))
             }
         }
-        .frame(height: 120)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.lg))
         .shadow(
-            color: isSelected ? AppColors.primaryBlue.opacity(0.3) : AppShadows.medium.color,
-            radius: isSelected ? 10 : AppShadows.medium.radius,
-            x: AppShadows.medium.x,
-            y: AppShadows.medium.y
+            color: isSelected ? AppColors.primaryBlue.opacity(0.15) : Color.black.opacity(0.05),
+            radius: isSelected ? 8 : 4,
+            x: 0,
+            y: isSelected ? 4 : 2
         )
-        .scaleEffect(isSelected ? 1.05 : 1.0)
-        .animation(AppAnimations.bouncy, value: isSelected)
+        .scaleEffect(isSelected ? 1.02 : 1.0)
+        .animation(AppAnimations.smooth, value: isSelected)
         .onTapGesture(perform: onTap)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovering = hovering
+            }
+        }
         .onAppear(perform: loadThumbnail)
     }
     
@@ -138,6 +235,16 @@ struct FileCardView: View {
             Image(uiImage: thumbnail)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
+                .overlay(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            Color.black.opacity(0.05)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
         } else {
             // 佔位符背景
             ZStack {
@@ -145,104 +252,29 @@ struct FileCardView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.dynamic(light: .gray.opacity(0.1), dark: .gray.opacity(0.2)),
-                                Color.dynamic(light: .gray.opacity(0.05), dark: .gray.opacity(0.1))
+                                Color.dynamic(light: Color(red: 245/255, green: 245/255, blue: 250/255), 
+                                             dark: Color(red: 40/255, green: 40/255, blue: 50/255)),
+                                Color.dynamic(light: Color(red: 240/255, green: 240/255, blue: 245/255), 
+                                             dark: Color(red: 35/255, green: 35/255, blue: 45/255))
                             ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
                     )
                 
                 if isLoading {
                     ProgressView()
-                        .scaleEffect(0.9)
+                        .scaleEffect(0.6)
+                        .tint(AppColors.primaryBlue)
                 } else {
-                    Image(systemName: "photo.fill")
-                        .font(.system(size: 32, weight: .light))
-                        .foregroundColor(AppColors.textTertiary.opacity(0.5))
+                    Image(systemName: "photo")
+                        .font(.system(size: 24, weight: .thin))
+                        .foregroundColor(AppColors.textTertiary.opacity(0.4))
                 }
             }
         }
     }
     
-    private var overlayContent: some View {
-        VStack {
-            Spacer()
-            
-            // 漸層遮罩
-            HStack(spacing: AppSpacing.sm) {
-                // 檔案資訊
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(fileItem.name)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    
-                    Text(fileItem.formattedSize)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.8))
-                }
-                
-                Spacer()
-                
-                // 選中圖標
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.white)
-                    .shadow(radius: 2)
-            }
-            .padding(AppSpacing.sm)
-            .background(
-                LinearGradient(
-                    colors: [
-                        .black.opacity(0.0),
-                        .black.opacity(0.4),
-                        .black.opacity(0.6)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-        }
-    }
-    
-    private var removeButton: some View {
-        VStack {
-            HStack {
-                Spacer()
-                Button(action: onRemove) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.black.opacity(0.5))
-                            .frame(width: 24, height: 24)
-                        
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                }
-                .padding(AppSpacing.xs)
-            }
-            Spacer()
-        }
-    }
-    
-    private var selectionGlow: some View {
-        RoundedRectangle(cornerRadius: AppRadius.lg)
-            .stroke(
-                LinearGradient(
-                    colors: [
-                        AppColors.primaryBlue.opacity(0.8),
-                        AppColors.primaryPurple.opacity(0.8)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 3
-            )
-            .blur(radius: 2)
-    }
     
     private func loadThumbnail() {
         guard thumbnail == nil else { return }
@@ -250,8 +282,10 @@ struct FileCardView: View {
         Task.detached(priority: .userInitiated) {
             let generatedThumbnail = await fileItem.generateThumbnail()
             await MainActor.run {
-                self.thumbnail = generatedThumbnail
-                self.isLoading = false
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.thumbnail = generatedThumbnail
+                    self.isLoading = false
+                }
             }
         }
     }
