@@ -129,31 +129,6 @@ struct FileCardView: View {
                                     lineWidth: isSelected ? 2.5 : 1
                                 )
                         )
-                    
-                    // 選中標記
-                    if isSelected {
-                        VStack {
-                            HStack {
-                                Spacer()
-                                ZStack {
-                                    Circle()
-                                        .fill(.white)
-                                        .frame(width: 20, height: 20)
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 20, weight: .medium))
-                                        .foregroundStyle(
-                                            LinearGradient(
-                                                colors: [AppColors.primaryBlue, AppColors.primaryPurple],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                }
-                                .offset(x: 5, y: -5)
-                            }
-                            Spacer()
-                        }
-                    }
                 }
                 
                 // 檔案資訊
@@ -195,22 +170,20 @@ struct FileCardView: View {
                     )
             )
             
-            // 移除按鈕（懸停或選中時顯示）
-            if isHovering || isSelected {
-                Button(action: onRemove) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.red.opacity(0.9))
-                            .frame(width: 18, height: 18)
-                        
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                    }
+            // 刪除按鈕（始終顯示）
+            Button(action: onRemove) {
+                ZStack {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 22, height: 22)
+                    
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.white)
                 }
-                .offset(x: 5, y: -5)
-                .transition(.scale.combined(with: .opacity))
             }
+            .offset(x: 6, y: -6)
+            .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
         }
         .shadow(
             color: isSelected ? AppColors.primaryBlue.opacity(0.15) : Color.black.opacity(0.05),
