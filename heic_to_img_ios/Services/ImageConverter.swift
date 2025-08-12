@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 
-// MARK: - 圖像轉換服務（使用 API）
+// MARK: - 圖像轉換服務（使用本地轉換）
 class ImageConverter: ObservableObject {
     static let shared = ImageConverter()
     
@@ -16,27 +16,39 @@ class ImageConverter: ObservableObject {
     @Published var currentProgress: Double = 0.0
     @Published var isConverting: Bool = false
     
-    private let apiService = APIService.shared
+    // 使用本地轉換服務而非 API
+    private let localConverter = LocalImageConverterService.shared
     private var cancellables = Set<AnyCancellable>()
     
     private init() {}
     
-    // MARK: - 單檔案轉換（透過 API）
+    // MARK: - 單檔案轉換（透過本地轉換）
     func convertSingleFile(
         _ fileItem: FileItem,
         settings: ConversionSettings,
         progressHandler: @escaping (Double) -> Void,
         completion: @escaping (Result<ConversionResult, Error>) -> Void
     ) {
-        apiService.convertFile(
-            fileItem,
-            settings: settings,
-            progressHandler: progressHandler,
-            completion: completion
-        )
+        Task {
+            do {
+                let result = try await localConverter.convertFile(
+                    fileItem,
+                    settings: settings,
+                    progressHandler: progressHandler
+                )
+                
+                DispatchQueue.main.async {
+                    completion(.success(result))
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+            }
+        }
     }
     
-    // MARK: - 批次轉換（透過 API）
+    // MARK: - 批次轉換（透過本地轉換）
     func convertBatchFiles(
         _ files: [FileItem],
         settings: ConversionSettings,
@@ -45,13 +57,24 @@ class ImageConverter: ObservableObject {
     ) {
         isConverting = true
         
-        apiService.convertBatchFiles(
-            files,
-            settings: settings,
-            progressHandler: progressHandler
-        ) { [weak self] result in
-            self?.isConverting = false
-            completion(result)
+        Task {
+            do {
+                let results = try await localConverter.convertBatchFiles(
+                    files,
+                    settings: settings,
+                    progressHandler: progressHandler
+                )
+                
+                DispatchQueue.main.async { [weak self] in
+                    self?.isConverting = false
+                    completion(.success(results))
+                }
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    self?.isConverting = false
+                    completion(.failure(error))
+                }
+            }
         }
     }
 }
