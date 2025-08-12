@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var settings: ConversionSettings
+    @State private var showClearConfirmation = false
     
     var body: some View {
         NavigationView {
@@ -114,13 +115,39 @@ struct SettingsView: View {
                         settings.reset()
                     }
                     .foregroundColor(AppColors.warningOrange)
+                    
+                    Button("清除轉換記錄") {
+                        showClearConfirmation = true
+                    }
+                    .foregroundColor(.red)
                 }
             }
             .scrollContentBackground(.hidden)
             }
             .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.large)
+            .alert("確認清除", isPresented: $showClearConfirmation) {
+                Button("取消", role: .cancel) { }
+                Button("清除", role: .destructive) {
+                    clearConversionRecords()
+                }
+            } message: {
+                Text("確定要清除所有轉換記錄和檔案嗎？此操作無法復原。")
+            }
         }
+    }
+    
+    private func clearConversionRecords() {
+        // 刪除所有本地檔案
+        for result in appState.conversionResults {
+            try? FileManager.default.removeItem(at: result.outputURL)
+        }
+        
+        // 清除轉換記錄
+        appState.conversionResults.removeAll()
+        
+        // 清除統計資料
+        appState.lastConversionStats = nil
     }
 }
 
