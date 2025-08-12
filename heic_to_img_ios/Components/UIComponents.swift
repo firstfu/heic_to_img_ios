@@ -175,14 +175,14 @@ struct FileCardView: View {
                 ZStack {
                     Circle()
                         .fill(Color.red)
-                        .frame(width: 22, height: 22)
+                        .frame(width: 20, height: 20)
                     
                     Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.white)
                 }
             }
-            .offset(x: 6, y: -6)
+            .offset(x: -2, y: 2)
             .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
         }
         .shadow(
