@@ -13,7 +13,10 @@
       "Bash(plutil:*)",
       "Bash(rm:*)",
       "Bash(curl:*)",
-      "Bash(open:*)"
+      "Bash(open:*)",
+      "Bash(identify:*)",
+      "Bash(convert:*)",
+      "Bash(magick:*)"
     ],
     "deny": [],
     "additionalDirectories": [
