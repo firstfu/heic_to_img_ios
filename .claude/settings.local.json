@@ -12,7 +12,8 @@
       "Bash(xcrun simctl launch:*)",
       "Bash(plutil:*)",
       "Bash(rm:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(open:*)"
     ],
     "deny": [],
     "additionalDirectories": [

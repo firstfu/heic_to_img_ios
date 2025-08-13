@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HEIC Master 圖標生成器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 32px;
+            background: linear-gradient(135deg, #5A78FF 0%, #963CFF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .preview-section {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .preview-card {
+            text-align: center;
+        }
+        
+        .preview-card h3 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .canvas-container {
+            background: #f5f5f5;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        canvas {
+            border-radius: 22.5%;
+            background: white;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #5A78FF 0%, #963CFF 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(90, 120, 255, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(90, 120, 255, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .icon-list {
+            background: #f9f9f9;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+        
+        .icon-list h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .icon-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        
+        .icon-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .icon-size {
+            font-weight: 600;
+            color: #5A78FF;
+            margin-bottom: 5px;
+        }
+        
+        .icon-desc {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #5A78FF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 HEIC Master 圖標生成器</h1>
+        <p class="subtitle">自動生成所有 iOS App Store 所需的圖標尺寸</p>
+        
+        <div class="preview-section">
+            <div class="preview-card">
+                <h3>主要圖標 (180x180)</h3>
+                <div class="canvas-container">
+                    <canvas id="previewCanvas" width="180" height="180"></canvas>
+                </div>
+            </div>
+            <div class="preview-card">
+                <h3>App Store (1024x1024)</h3>
+                <div class="canvas-container">
+                    <canvas id="storeCanvas" width="256" height="256"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="generateAllIcons()">生成所有圖標</button>
+            <button onclick="downloadAllIcons()" id="downloadBtn" disabled>下載所有圖標 (ZIP)</button>
+        </div>
+        
+        <div id="status"></div>
+        
+        <div class="icon-list">
+            <h2>📱 iOS 圖標尺寸清單</h2>
+            <div class="icon-grid">
+                <div class="icon-item">
+                    <div class="icon-size">20x20</div>
+                    <div class="icon-desc">iPad 通知</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">29x29</div>
+                    <div class="icon-desc">iPad 設定</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">40x40</div>
+                    <div class="icon-desc">iPad Spotlight</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">40x40</div>
+                    <div class="icon-desc">iPhone 通知 @2x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">58x58</div>
+                    <div class="icon-desc">iPhone/iPad 設定 @2x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">60x60</div>
+                    <div class="icon-desc">iPhone 通知 @3x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">76x76</div>
+                    <div class="icon-desc">iPad App</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">80x80</div>
+                    <div class="icon-desc">iPhone/iPad Spotlight @2x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">87x87</div>
+                    <div class="icon-desc">iPhone 設定 @3x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">120x120</div>
+                    <div class="icon-desc">iPhone App @2x/Spotlight @3x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">152x152</div>
+                    <div class="icon-desc">iPad App @2x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">167x167</div>
+                    <div class="icon-desc">iPad Pro App @2x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">180x180</div>
+                    <div class="icon-desc">iPhone App @3x</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-size">1024x1024</div>
+                    <div class="icon-desc">App Store</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 所有需要生成的圖標尺寸
+        const iconSizes = [
+            { size: 20, name: 'icon-20' },
+            { size: 29, name: 'icon-29' },
+            { size: 40, name: 'icon-40' },
+            { size: 58, name: 'icon-58' },
+            { size: 60, name: 'icon-60' },
+            { size: 76, name: 'icon-76' },
+            { size: 80, name: 'icon-80' },
+            { size: 87, name: 'icon-87' },
+            { size: 120, name: 'icon-120' },
+            { size: 152, name: 'icon-152' },
+            { size: 167, name: 'icon-167' },
+            { size: 180, name: 'icon-180' },
+            { size: 1024, name: 'icon-1024' }
+        ];
+        
+        let generatedIcons = {};
+        
+        // 繪製圖標的主要函數
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            const scale = size / 1024;
+            
+            // 清空畫布
+            ctx.clearRect(0, 0, size, size);
+            
+            // 設置圓角矩形背景
+            const cornerRadius = size * 0.225; // iOS 標準圓角比例
+            
+            // 創建漸層背景
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#5A78FF');
+            gradient.addColorStop(1, '#963CFF');
+            
+            // 繪製圓角矩形背景
+            ctx.beginPath();
+            ctx.moveTo(cornerRadius, 0);
+            ctx.lineTo(size - cornerRadius, 0);
+            ctx.quadraticCurveTo(size, 0, size, cornerRadius);
+            ctx.lineTo(size, size - cornerRadius);
+            ctx.quadraticCurveTo(size, size, size - cornerRadius, size);
+            ctx.lineTo(cornerRadius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - cornerRadius);
+            ctx.lineTo(0, cornerRadius);
+            ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // 添加內部光暈效果
+            const glowGradient = ctx.createRadialGradient(
+                size * 0.5, size * 0.3, 0,
+                size * 0.5, size * 0.5, size * 0.7
+            );
+            glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+            glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            
+            ctx.beginPath();
+            ctx.moveTo(cornerRadius, 0);
+            ctx.lineTo(size - cornerRadius, 0);
+            ctx.quadraticCurveTo(size, 0, size, cornerRadius);
+            ctx.lineTo(size, size - cornerRadius);
+            ctx.quadraticCurveTo(size, size, size - cornerRadius, size);
+            ctx.lineTo(cornerRadius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - cornerRadius);
+            ctx.lineTo(0, cornerRadius);
+            ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            ctx.closePath();
+            ctx.fillStyle = glowGradient;
+            ctx.fill();
+            
+            // 繪製中心圖標元素
+            ctx.save();
+            ctx.translate(size / 2, size / 2);
+            
+            // 繪製圖片框架（代表原始圖片）
+            const frameSize = size * 0.35;
+            const frameX = -frameSize * 0.7;
+            const frameY = -frameSize / 2;
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = size * 0.02;
+            
+            // 左側圖片框
+            ctx.beginPath();
+            ctx.roundRect(frameX, frameY, frameSize, frameSize, size * 0.03);
+            ctx.fill();
+            ctx.stroke();
+            
+            // 在左側框內添加 HEIC 文字
+            ctx.fillStyle = '#5A78FF';
+            ctx.font = `bold ${size * 0.08}px -apple-system, Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('HEIC', frameX + frameSize / 2, frameY + frameSize / 2);
+            
+            // 繪製轉換箭頭
+            const arrowStartX = frameX + frameSize + size * 0.05;
+            const arrowEndX = arrowStartX + size * 0.15;
+            const arrowY = 0;
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = size * 0.03;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // 箭頭主線
+            ctx.beginPath();
+            ctx.moveTo(arrowStartX, arrowY);
+            ctx.lineTo(arrowEndX, arrowY);
+            ctx.stroke();
+            
+            // 箭頭頭部
+            ctx.beginPath();
+            ctx.moveTo(arrowEndX - size * 0.05, arrowY - size * 0.05);
+            ctx.lineTo(arrowEndX, arrowY);
+            ctx.lineTo(arrowEndX - size * 0.05, arrowY + size * 0.05);
+            ctx.stroke();
+            
+            // 右側圖片框（代表轉換後的圖片）
+            const frame2X = arrowEndX + size * 0.05;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = size * 0.02;
+            
+            ctx.beginPath();
+            ctx.roundRect(frame2X, frameY, frameSize, frameSize, size * 0.03);
+            ctx.fill();
+            ctx.stroke();
+            
+            // 在右側框內添加 JPG/PNG 圖標
+            ctx.fillStyle = '#963CFF';
+            ctx.font = `bold ${size * 0.08}px -apple-system, Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('IMG', frame2X + frameSize / 2, frameY + frameSize / 2);
+            
+            // 添加裝飾性元素 - 小圓點
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            const dotRadius = size * 0.015;
+            
+            // 左上角圓點
+            ctx.beginPath();
+            ctx.arc(-size * 0.35, -size * 0.35, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 右上角圓點
+            ctx.beginPath();
+            ctx.arc(size * 0.35, -size * 0.35, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 左下角圓點
+            ctx.beginPath();
+            ctx.arc(-size * 0.35, size * 0.35, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 右下角圓點
+            ctx.beginPath();
+            ctx.arc(size * 0.35, size * 0.35, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // 初始化預覽
+        function initPreview() {
+            const previewCanvas = document.getElementById('previewCanvas');
+            const storeCanvas = document.getElementById('storeCanvas');
+            
+            drawIcon(previewCanvas, 180);
+            
+            // 為 App Store 圖標繪製較大的版本
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 1024;
+            tempCanvas.height = 1024;
+            drawIcon(tempCanvas, 1024);
+            
+            // 縮放到顯示尺寸
+            const ctx = storeCanvas.getContext('2d');
+            ctx.drawImage(tempCanvas, 0, 0, 1024, 1024, 0, 0, 256, 256);
+        }
+        
+        // 生成所有圖標
+        async function generateAllIcons() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status info';
+            statusDiv.innerHTML = '正在生成圖標... <span class="loading"></span>';
+            
+            generatedIcons = {};
+            
+            for (const iconConfig of iconSizes) {
+                const canvas = document.createElement('canvas');
+                canvas.width = iconConfig.size;
+                canvas.height = iconConfig.size;
+                
+                drawIcon(canvas, iconConfig.size);
+                
+                // 將 canvas 轉換為 blob
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/png');
+                });
+                
+                generatedIcons[`${iconConfig.name}.png`] = blob;
+                
+                // 為特定尺寸生成 @2x 和 @3x 版本
+                if (iconConfig.size === 20) {
+                    // 生成 @2x (40x40)
+                    const canvas2x = document.createElement('canvas');
+                    canvas2x.width = 40;
+                    canvas2x.height = 40;
+                    drawIcon(canvas2x, 40);
+                    const blob2x = await new Promise(resolve => {
+                        canvas2x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-20@2x.png'] = blob2x;
+                    
+                    // 生成 @3x (60x60)
+                    const canvas3x = document.createElement('canvas');
+                    canvas3x.width = 60;
+                    canvas3x.height = 60;
+                    drawIcon(canvas3x, 60);
+                    const blob3x = await new Promise(resolve => {
+                        canvas3x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-20@3x.png'] = blob3x;
+                }
+                
+                if (iconConfig.size === 29) {
+                    // 生成 @2x (58x58)
+                    const canvas2x = document.createElement('canvas');
+                    canvas2x.width = 58;
+                    canvas2x.height = 58;
+                    drawIcon(canvas2x, 58);
+                    const blob2x = await new Promise(resolve => {
+                        canvas2x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-29@2x.png'] = blob2x;
+                    
+                    // 生成 @3x (87x87)
+                    const canvas3x = document.createElement('canvas');
+                    canvas3x.width = 87;
+                    canvas3x.height = 87;
+                    drawIcon(canvas3x, 87);
+                    const blob3x = await new Promise(resolve => {
+                        canvas3x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-29@3x.png'] = blob3x;
+                }
+                
+                if (iconConfig.size === 40) {
+                    // 生成 @2x (80x80)
+                    const canvas2x = document.createElement('canvas');
+                    canvas2x.width = 80;
+                    canvas2x.height = 80;
+                    drawIcon(canvas2x, 80);
+                    const blob2x = await new Promise(resolve => {
+                        canvas2x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-40@2x.png'] = blob2x;
+                    
+                    // 生成 @3x (120x120)
+                    const canvas3x = document.createElement('canvas');
+                    canvas3x.width = 120;
+                    canvas3x.height = 120;
+                    drawIcon(canvas3x, 120);
+                    const blob3x = await new Promise(resolve => {
+                        canvas3x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-40@3x.png'] = blob3x;
+                }
+                
+                if (iconConfig.size === 60) {
+                    // 生成 @2x (120x120)
+                    const canvas2x = document.createElement('canvas');
+                    canvas2x.width = 120;
+                    canvas2x.height = 120;
+                    drawIcon(canvas2x, 120);
+                    const blob2x = await new Promise(resolve => {
+                        canvas2x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-60@2x.png'] = blob2x;
+                    
+                    // 生成 @3x (180x180)
+                    const canvas3x = document.createElement('canvas');
+                    canvas3x.width = 180;
+                    canvas3x.height = 180;
+                    drawIcon(canvas3x, 180);
+                    const blob3x = await new Promise(resolve => {
+                        canvas3x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-60@3x.png'] = blob3x;
+                }
+                
+                if (iconConfig.size === 76) {
+                    // 生成 @2x (152x152)
+                    const canvas2x = document.createElement('canvas');
+                    canvas2x.width = 152;
+                    canvas2x.height = 152;
+                    drawIcon(canvas2x, 152);
+                    const blob2x = await new Promise(resolve => {
+                        canvas2x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-76@2x.png'] = blob2x;
+                }
+                
+                if (iconConfig.size === 83.5) {
+                    // 生成 @2x (167x167)
+                    const canvas2x = document.createElement('canvas');
+                    canvas2x.width = 167;
+                    canvas2x.height = 167;
+                    drawIcon(canvas2x, 167);
+                    const blob2x = await new Promise(resolve => {
+                        canvas2x.toBlob(resolve, 'image/png');
+                    });
+                    generatedIcons['icon-83.5@2x.png'] = blob2x;
+                }
+            }
+            
+            statusDiv.className = 'status success';
+            statusDiv.innerHTML = `✅ 成功生成 ${Object.keys(generatedIcons).length} 個圖標！`;
+            
+            // 啟用下載按鈕
+            document.getElementById('downloadBtn').disabled = false;
+        }
+        
+        // 下載所有圖標
+        async function downloadAllIcons() {
+            if (Object.keys(generatedIcons).length === 0) {
+                alert('請先生成圖標！');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status info';
+            statusDiv.innerHTML = '正在打包圖標... <span class="loading"></span>';
+            
+            const zip = new JSZip();
+            const folder = zip.folder('heic-master-icons');
+            
+            // 添加所有圖標到 ZIP
+            for (const [filename, blob] of Object.entries(generatedIcons)) {
+                folder.file(filename, blob);
+            }
+            
+            // 添加 Contents.json (用於 Xcode)
+            const contentsJson = {
+                "images": [
+                    // iPhone Notification
+                    { "size": "20x20", "idiom": "iphone", "filename": "icon-20@2x.png", "scale": "2x" },
+                    { "size": "20x20", "idiom": "iphone", "filename": "icon-20@3x.png", "scale": "3x" },
+                    // iPhone Settings
+                    { "size": "29x29", "idiom": "iphone", "filename": "icon-29@2x.png", "scale": "2x" },
+                    { "size": "29x29", "idiom": "iphone", "filename": "icon-29@3x.png", "scale": "3x" },
+                    // iPhone Spotlight
+                    { "size": "40x40", "idiom": "iphone", "filename": "icon-40@2x.png", "scale": "2x" },
+                    { "size": "40x40", "idiom": "iphone", "filename": "icon-40@3x.png", "scale": "3x" },
+                    // iPhone App
+                    { "size": "60x60", "idiom": "iphone", "filename": "icon-60@2x.png", "scale": "2x" },
+                    { "size": "60x60", "idiom": "iphone", "filename": "icon-60@3x.png", "scale": "3x" },
+                    // iPad Notification
+                    { "size": "20x20", "idiom": "ipad", "filename": "icon-20.png", "scale": "1x" },
+                    { "size": "20x20", "idiom": "ipad", "filename": "icon-20@2x.png", "scale": "2x" },
+                    // iPad Settings
+                    { "size": "29x29", "idiom": "ipad", "filename": "icon-29.png", "scale": "1x" },
+                    { "size": "29x29", "idiom": "ipad", "filename": "icon-29@2x.png", "scale": "2x" },
+                    // iPad Spotlight
+                    { "size": "40x40", "idiom": "ipad", "filename": "icon-40.png", "scale": "1x" },
+                    { "size": "40x40", "idiom": "ipad", "filename": "icon-40@2x.png", "scale": "2x" },
+                    // iPad App
+                    { "size": "76x76", "idiom": "ipad", "filename": "icon-76.png", "scale": "1x" },
+                    { "size": "76x76", "idiom": "ipad", "filename": "icon-76@2x.png", "scale": "2x" },
+                    // iPad Pro App
+                    { "size": "83.5x83.5", "idiom": "ipad", "filename": "icon-167.png", "scale": "2x" },
+                    // App Store
+                    { "size": "1024x1024", "idiom": "ios-marketing", "filename": "icon-1024.png", "scale": "1x" }
+                ],
+                "info": {
+                    "version": 1,
+                    "author": "HEIC Master Icon Generator"
+                }
+            };
+            
+            folder.file('Contents.json', JSON.stringify(contentsJson, null, 2));
+            
+            // 生成 ZIP 檔案
+            const content = await zip.generateAsync({ type: 'blob' });
+            
+            // 下載 ZIP 檔案
+            saveAs(content, 'heic-master-icons.zip');
+            
+            statusDiv.className = 'status success';
+            statusDiv.innerHTML = '✅ 圖標已下載！';
+        }
+        
+        // 頁面載入時初始化預覽
+        window.onload = function() {
+            initPreview();
+        };
+    </script>
+</body>
+</html>
