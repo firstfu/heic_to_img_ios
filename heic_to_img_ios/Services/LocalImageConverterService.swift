@@ -10,6 +10,7 @@ import UIKit
 import CoreImage
 import ImageIO
 import UniformTypeIdentifiers
+import os.log
 
 // MARK: - 本地圖像轉換服務
 class LocalImageConverterService {
@@ -20,8 +21,24 @@ class LocalImageConverterService {
 
     // 用於處理的並發佇列
     private let processingQueue = DispatchQueue(label: "com.heicmaster.imageProcessing", attributes: .concurrent)
+    
+    // 記憶體監控
+    private let memoryLogger = Logger(subsystem: "com.heicmaster", category: "memory")
+    private var isLowMemoryMode = false
+    
+    // 批次處理控制
+    private let maxConcurrentOperations: Int
 
     private init() {
+        // 根據設備性能設置併發操作數
+        if ProcessInfo.processInfo.physicalMemory > 4 * 1024 * 1024 * 1024 { // > 4GB
+            self.maxConcurrentOperations = ProcessingLimits.maxConcurrentJobs
+        } else if ProcessInfo.processInfo.physicalMemory > 2 * 1024 * 1024 * 1024 { // > 2GB
+            self.maxConcurrentOperations = ProcessingLimits.maxConcurrentJobs / 2
+        } else {
+            self.maxConcurrentOperations = 1 // 低記憶體設備使用串行處理
+        }
+        
         // 初始化 CIContext，優先使用 GPU
         if let eaglContext = EAGLContext(api: .openGLES3) ?? EAGLContext(api: .openGLES2) {
             self.ciContext = CIContext(eaglContext: eaglContext, options: [
@@ -35,6 +52,63 @@ class LocalImageConverterService {
                 .useSoftwareRenderer: false
             ])
         }
+        
+        // 設置記憶體警告監聽
+        setupMemoryWarning()
+    }
+    
+    // MARK: - 記憶體管理
+    
+    private func setupMemoryWarning() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleMemoryWarning()
+        }
+    }
+    
+    private func handleMemoryWarning() {
+        isLowMemoryMode = true
+        memoryLogger.warning("收到記憶體警告，切換到低記憶體模式")
+        
+        // 清理記憶體
+        autoreleasepool {
+            // 強制垃圾回收
+        }
+        
+        // 5秒後恢復正常模式
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            self?.isLowMemoryMode = false
+        }
+    }
+    
+    private func getCurrentMemoryUsage() -> UInt64 {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        
+        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        
+        if kerr == KERN_SUCCESS {
+            return info.resident_size
+        }
+        return 0
+    }
+    
+    private func checkMemoryStatus() -> Bool {
+        let currentMemory = getCurrentMemoryUsage()
+        let memoryMB = currentMemory / (1024 * 1024)
+        
+        if memoryMB > ProcessingLimits.memoryWarningThresholdMB {
+            memoryLogger.info("記憶體使用量: \(memoryMB)MB，接近警告閾值")
+            return true
+        }
+        return false
     }
 
     // MARK: - 轉換單個檔案
@@ -103,38 +177,102 @@ class LocalImageConverterService {
         settings: ConversionSettings,
         progressHandler: @escaping (Double, Int, Int) -> Void
     ) async throws -> [ConversionResult] {
-
-        var results: [ConversionResult] = []
+        
+        // 檢查檔案數量限制
+        guard files.count <= ProcessingLimits.maxBatchFiles else {
+            throw ConversionError.tooManyFiles(files.count, ProcessingLimits.maxBatchFiles)
+        }
+        
+        // 檢查檔案大小限制
+        guard !ProcessingLimits.exceedsSizeLimit(files) else {
+            let totalSizeMB = ProcessingLimits.totalSizeInMB(files)
+            throw ConversionError.fileTooLarge("總大小 \(Int(totalSizeMB))MB 超過 \(ProcessingLimits.maxTotalSizeMB)MB 限制")
+        }
+        
         let totalFiles = files.count
-
-        for (index, file) in files.enumerated() {
-            do {
-                let result = try await convertFile(
-                    file,
-                    settings: settings,
-                    progressHandler: { _ in
-                        // 個別檔案進度暫不處理
+        let batchSize = determineBatchSize(files.count)
+        var results: [ConversionResult] = []
+        var completedFiles = 0
+        
+        memoryLogger.info("開始批次轉換：\(totalFiles) 個檔案，批次大小：\(batchSize)")
+        
+        // 分批處理檔案
+        let batches = files.chunked(into: batchSize)
+        
+        for (batchIndex, batch) in batches.enumerated() {
+            memoryLogger.info("處理批次 \(batchIndex + 1)/\(batches.count)，包含 \(batch.count) 個檔案")
+            
+            // 檢查記憶體狀態
+            if checkMemoryStatus() || isLowMemoryMode {
+                memoryLogger.warning("記憶體使用量過高，使用串行處理")
+                // 串行處理以節省記憶體
+                for file in batch {
+                    let result = try await convertFile(
+                        file,
+                        settings: settings,
+                        progressHandler: { _ in }
+                    )
+                    results.append(result)
+                    completedFiles += 1
+                    
+                    await MainActor.run {
+                        let progress = Double(completedFiles) / Double(totalFiles)
+                        progressHandler(progress, completedFiles, totalFiles)
                     }
-                )
-
-                results.append(result)
-
-            } catch {
-                // 記錄錯誤但繼續處理其他檔案
-                print("❌ 轉換檔案失敗 \(file.name): \(error)")
-                throw error
+                }
+            } else {
+                // 並行處理以提高速度
+                let batchResults = try await withThrowingTaskGroup(of: ConversionResult.self) { group in
+                    let concurrency = min(maxConcurrentOperations, batch.count)
+                    var batchResults: [ConversionResult] = []
+                    
+                    // 添加轉換任務到群組
+                    for file in batch {
+                        group.addTask {
+                            return try await self.convertFile(
+                                file,
+                                settings: settings,
+                                progressHandler: { _ in }
+                            )
+                        }
+                    }
+                    
+                    // 收集結果
+                    for try await result in group {
+                        batchResults.append(result)
+                        completedFiles += 1
+                        
+                        await MainActor.run {
+                            let progress = Double(completedFiles) / Double(totalFiles)
+                            progressHandler(progress, completedFiles, totalFiles)
+                        }
+                    }
+                    
+                    return batchResults
+                }
+                
+                results.append(contentsOf: batchResults)
             }
-
-            // 更新整體進度
-            let completedFiles = index + 1
-            let progress = Double(completedFiles) / Double(totalFiles)
-
-            await MainActor.run {
-                progressHandler(progress, completedFiles, totalFiles)
+            
+            // 批次間休息，讓系統回收記憶體
+            if batchIndex < batches.count - 1 {
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
             }
         }
-
+        
+        memoryLogger.info("批次轉換完成：\(results.count) 個檔案成功轉換")
         return results
+    }
+    
+    // MARK: - 輔助方法
+    
+    private func determineBatchSize(_ totalFiles: Int) -> Int {
+        if isLowMemoryMode {
+            return ProcessingLimits.lowMemoryBatchFiles
+        }
+        
+        let memoryBasedSize = min(totalFiles, maxConcurrentOperations * 2)
+        return max(1, memoryBasedSize)
     }
 
     // MARK: - 私有方法
@@ -290,6 +428,18 @@ class LocalImageConverterService {
         case .png:
             // PNG 通常比 HEIC 大 4-5 倍
             return originalSize * 4
+        }
+    }
+}
+
+// MARK: - Array Extension for Batching
+extension Array {
+    /// 將陣列分割成指定大小的小批次
+    /// - Parameter size: 每個批次的大小
+    /// - Returns: 分割後的二維陣列
+    func chunked(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }

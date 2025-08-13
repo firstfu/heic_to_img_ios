@@ -524,6 +524,54 @@ struct ConversionView: View {
         }
         
         if !validation.valid.isEmpty {
+            // 檢查是否超過檔案數量限制
+            let totalFiles = appState.selectedFiles.count + validation.valid.count
+            if totalFiles > ProcessingLimits.maxBatchFiles {
+                let availableSlots = ProcessingLimits.maxBatchFiles - appState.selectedFiles.count
+                if availableSlots > 0 {
+                    let limitedFiles = Array(validation.valid.prefix(availableSlots))
+                    appState.addFiles(limitedFiles)
+                    errorMessage = "單次最多只能轉換 \(ProcessingLimits.maxBatchFiles) 個檔案，已選取前 \(limitedFiles.count) 個檔案。\n\n如需轉換更多檔案，請分批處理。"
+                } else {
+                    errorMessage = "已達到單次轉換上限（\(ProcessingLimits.maxBatchFiles) 個檔案）。\n\n請先清空當前檔案或分批處理。"
+                }
+                showError = true
+                return
+            }
+            
+            // 檢查是否超過總檔案大小限制
+            let potentialFiles = appState.selectedFiles + validation.valid
+            if ProcessingLimits.exceedsSizeLimit(potentialFiles) {
+                let currentSizeMB = ProcessingLimits.totalSizeInMB(appState.selectedFiles)
+                let maxSizeMB = Double(ProcessingLimits.maxTotalSizeMB)
+                let remainingSizeMB = maxSizeMB - currentSizeMB
+                
+                if remainingSizeMB > 0 {
+                    // 嘗試添加部分檔案
+                    var addedFiles: [FileItem] = []
+                    var currentSize = currentSizeMB
+                    
+                    for file in validation.valid {
+                        let fileSizeMB = Double(file.size) / (1024 * 1024)
+                        if currentSize + fileSizeMB <= maxSizeMB {
+                            addedFiles.append(file)
+                            currentSize += fileSizeMB
+                        }
+                    }
+                    
+                    if !addedFiles.isEmpty {
+                        appState.addFiles(addedFiles)
+                        errorMessage = "總檔案大小超過 \(ProcessingLimits.maxTotalSizeMB)MB 限制，已選取部分檔案（\(addedFiles.count) 個）。\n\n剩餘檔案請分批處理。"
+                    } else {
+                        errorMessage = "檔案太大，已達到 \(ProcessingLimits.maxTotalSizeMB)MB 的大小限制。\n\n請先清空當前檔案或選擇較小的檔案。"
+                    }
+                } else {
+                    errorMessage = "已達到 \(ProcessingLimits.maxTotalSizeMB)MB 的大小限制。\n\n請先清空當前檔案或分批處理。"
+                }
+                showError = true
+                return
+            }
+            
             appState.addFiles(validation.valid)
         }
     }

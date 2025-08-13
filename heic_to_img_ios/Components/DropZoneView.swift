@@ -329,23 +329,39 @@ struct SelectedFilesView: View {
                             dark: AppColors.darkTextPrimary
                         ))
                     
-                    HStack(spacing: 4) {
-                        // 檔案數量
-                        HStack(spacing: 2) {
-                            Image(systemName: "doc.fill")
-                                .font(.system(size: 10))
-                            Text("\(selectedFiles.count) 個檔案")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 4) {
+                            // 檔案數量
+                            HStack(spacing: 2) {
+                                Image(systemName: "doc.fill")
+                                    .font(.system(size: 10))
+                                Text("\(selectedFiles.count)/\(ProcessingLimits.maxBatchFiles)")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                            }
+                            .foregroundColor(selectedFiles.count > ProcessingLimits.maxBatchFiles * 4/5 ? AppColors.warningOrange : AppColors.textSecondary)
+                            
+                            Text("•")
+                                .foregroundColor(AppColors.textTertiary)
+                            
+                            // 總大小
+                            Text(totalFileSize)
+                                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                                .foregroundColor(isNearSizeLimit ? AppColors.warningOrange : AppColors.textSecondary)
                         }
-                        .foregroundColor(AppColors.textSecondary)
                         
-                        Text("•")
-                            .foregroundColor(AppColors.textTertiary)
-                        
-                        // 總大小
-                        Text(totalFileSize)
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(AppColors.textSecondary)
+                        // 限制提示（當接近限制時顯示）
+                        if isNearLimits {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(AppColors.warningOrange)
+                                
+                                Text(limitWarningText)
+                                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppColors.warningOrange)
+                            }
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                        }
                     }
                 }
             }
@@ -391,7 +407,31 @@ struct SelectedFilesView: View {
     
     private var totalFileSize: String {
         let totalBytes = selectedFiles.reduce(0) { $0 + $1.size }
-        return ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
+        let totalMB = ProcessingLimits.totalSizeInMB(selectedFiles)
+        let maxMB = Double(ProcessingLimits.maxTotalSizeMB)
+        return "\(ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)) / \(Int(maxMB))MB"
+    }
+    
+    private var isNearSizeLimit: Bool {
+        let totalMB = ProcessingLimits.totalSizeInMB(selectedFiles)
+        let maxMB = Double(ProcessingLimits.maxTotalSizeMB)
+        return totalMB > maxMB * 0.8
+    }
+    
+    private var isNearLimits: Bool {
+        let isNearCount = selectedFiles.count > ProcessingLimits.maxBatchFiles * 4/5
+        return isNearCount || isNearSizeLimit
+    }
+    
+    private var limitWarningText: String {
+        if selectedFiles.count > ProcessingLimits.maxBatchFiles * 4/5 && isNearSizeLimit {
+            return "接近數量和大小限制"
+        } else if selectedFiles.count > ProcessingLimits.maxBatchFiles * 4/5 {
+            return "接近數量限制"
+        } else if isNearSizeLimit {
+            return "接近大小限制"
+        }
+        return ""
     }
     
     // MARK: - 功能方法

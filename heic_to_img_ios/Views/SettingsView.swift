@@ -85,6 +85,81 @@ struct SettingsView: View {
                 //     }
                 // }
                 
+                // 批次處理設定
+                Section(header: Text("批次處理設定").foregroundColor(Color.dynamic(
+                    light: AppColors.textSecondary,
+                    dark: AppColors.darkTextSecondary
+                ))) {
+                    // 檔案數量限制資訊
+                    HStack {
+                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                            Text("單次轉換限制")
+                                .foregroundColor(Color.dynamic(
+                                    light: AppColors.textPrimary,
+                                    dark: AppColors.darkTextPrimary
+                                ))
+                            
+                            Text("最多 \(ProcessingLimits.maxBatchFiles) 個檔案 / \(ProcessingLimits.maxTotalSizeMB)MB")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Color.dynamic(
+                                    light: AppColors.textSecondary,
+                                    dark: AppColors.darkTextSecondary
+                                ))
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "doc.on.doc.fill")
+                            .foregroundColor(AppColors.brandBlue)
+                    }
+                    
+                    // ZIP 打包限制資訊
+                    HStack {
+                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                            Text("ZIP 打包限制")
+                                .foregroundColor(Color.dynamic(
+                                    light: AppColors.textPrimary,
+                                    dark: AppColors.darkTextPrimary
+                                ))
+                            
+                            Text("最多 \(ProcessingLimits.maxZipFiles) 個檔案 / \(ProcessingLimits.maxZipSizeMB)MB")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Color.dynamic(
+                                    light: AppColors.textSecondary,
+                                    dark: AppColors.darkTextSecondary
+                                ))
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "archivebox.fill")
+                            .foregroundColor(AppColors.brandBlue)
+                    }
+                    
+                    // 自動分割說明
+                    HStack {
+                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                            Text("智能分割")
+                                .foregroundColor(Color.dynamic(
+                                    light: AppColors.textPrimary,
+                                    dark: AppColors.darkTextPrimary
+                                ))
+                            
+                            Text("超過 \(ProcessingLimits.autoSplitZipThreshold) 個檔案時自動分割")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Color.dynamic(
+                                    light: AppColors.textSecondary,
+                                    dark: AppColors.darkTextSecondary
+                                ))
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "scissors")
+                            .foregroundColor(.orange)
+                    }
+                }
+                
                 // 關於
                 Section(header: Text("關於應用程式").foregroundColor(Color.dynamic(
                     light: AppColors.textSecondary,

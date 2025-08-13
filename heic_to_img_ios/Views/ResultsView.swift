@@ -72,9 +72,13 @@ struct ResultsView: View {
                 if appState.isSelectionMode {
                     VStack {
                         Spacer()
+                        let selectedResults = appState.selectedResults
+                        let selectedURLs = selectedResults.map { $0.outputURL }
+                        
                         SelectionToolbarView(
                             selectedCount: appState.selectedResultIds.count,
                             isCreatingZip: isCreatingZip,
+                            shouldAutoSplit: SimpleZipService.shouldAutoSplit(urls: selectedURLs),
                             onCreateZip: createAndShareZip
                         )
                     }
@@ -172,21 +176,53 @@ struct ResultsView: View {
         
         isCreatingZip = true
         
-        SimpleZipService.createZip(from: urls, outputName: "HEIC轉換結果") { result in
-            self.isCreatingZip = false
-            
-            switch result {
-            case .success(let zipURL):
-                shareFiles(urls: [zipURL], description: "使用 HEIC 轉檔專家轉換並打包的圖片")
+        // 檢查是否需要自動分割
+        if SimpleZipService.shouldAutoSplit(urls: urls) {
+            // 使用自動分割打包
+            SimpleZipService.createZipsWithAutoSplit(from: urls, outputName: "HEIC轉換結果") { result in
+                self.isCreatingZip = false
                 
-                // 分享完成後清理臨時檔案
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-                    SimpleZipService.cleanupTempFile(at: zipURL)
+                switch result {
+                case .success(let zipURLs):
+                    if zipURLs.count == 1 {
+                        // 單個 ZIP 檔案
+                        shareFiles(urls: zipURLs, description: "使用 HEIC 轉檔專家轉換並打包的圖片")
+                    } else {
+                        // 多個 ZIP 檔案
+                        let description = "使用 HEIC 轉檔專家轉換並打包的圖片（共 \(zipURLs.count) 個壓縮檔）"
+                        shareFiles(urls: zipURLs, description: description)
+                    }
+                    
+                    // 分享完成後清理臨時檔案
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+                        for zipURL in zipURLs {
+                            SimpleZipService.cleanupTempFile(at: zipURL)
+                        }
+                    }
+                    
+                case .failure(let error):
+                    self.zipError = error
+                    self.showZipError = true
                 }
+            }
+        } else {
+            // 使用單一 ZIP 打包
+            SimpleZipService.createZip(from: urls, outputName: "HEIC轉換結果") { result in
+                self.isCreatingZip = false
                 
-            case .failure(let error):
-                self.zipError = error
-                self.showZipError = true
+                switch result {
+                case .success(let zipURL):
+                    shareFiles(urls: [zipURL], description: "使用 HEIC 轉檔專家轉換並打包的圖片")
+                    
+                    // 分享完成後清理臨時檔案
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                        SimpleZipService.cleanupTempFile(at: zipURL)
+                    }
+                    
+                case .failure(let error):
+                    self.zipError = error
+                    self.showZipError = true
+                }
             }
         }
     }
@@ -862,7 +898,16 @@ func shareFiles(urls: [URL], description: String) {
 struct SelectionToolbarView: View {
     let selectedCount: Int
     let isCreatingZip: Bool
+    let shouldAutoSplit: Bool
     let onCreateZip: () -> Void
+    
+    private var buttonText: String {
+        if isCreatingZip {
+            return shouldAutoSplit ? "智能分割中..." : "打包中..."
+        } else {
+            return shouldAutoSplit ? "智能分割打包" : "打包分享"
+        }
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -901,9 +946,29 @@ struct SelectionToolbarView: View {
                 HStack(spacing: 0) {
                     // 左側：已選擇項目資訊
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("已選擇")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            Text("已選擇")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundColor(.secondary)
+                            
+                            if shouldAutoSplit {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "scissors")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.orange)
+                                    
+                                    Text("智能分割")
+                                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.orange)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.orange.opacity(0.1))
+                                )
+                            }
+                        }
                         
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
@@ -937,7 +1002,7 @@ struct SelectionToolbarView: View {
                             .frame(width: 20, height: 20)
                             
                             // 文字
-                            Text(isCreatingZip ? "打包中..." : "打包分享")
+                            Text(buttonText)
                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white)
                         }

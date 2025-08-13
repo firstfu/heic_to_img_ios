@@ -24,6 +24,57 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
 
+// MARK: - 處理限制常數
+/// 定義轉換和打包功能的各種限制
+struct ProcessingLimits {
+    /// 單次轉換的最大檔案數量
+    static let maxBatchFiles: Int = 50
+    
+    /// 單個 ZIP 檔案的最大檔案數量
+    static let maxZipFiles: Int = 100
+    
+    /// 單次轉換的最大總檔案大小（MB）
+    static let maxTotalSizeMB: Int = 500
+    
+    /// 單個 ZIP 檔案的最大大小（MB）
+    static let maxZipSizeMB: Int = 200
+    
+    /// 低記憶體模式的檔案數量限制
+    static let lowMemoryBatchFiles: Int = 20
+    
+    /// 併發轉換的最大執行緒數
+    static let maxConcurrentJobs: Int = 4
+    
+    /// 記憶體警告閾值（MB）
+    static let memoryWarningThresholdMB: Int = 200
+    
+    /// 自動分割 ZIP 的閾值（檔案數量）
+    static let autoSplitZipThreshold: Int = 80
+    
+    /// 將 MB 轉換為 bytes
+    /// - Parameter mb: MB 數值
+    /// - Returns: 對應的 bytes 數值
+    static func mbToBytes(_ mb: Int) -> Int64 {
+        return Int64(mb) * 1024 * 1024
+    }
+    
+    /// 檢查檔案總大小是否超過限制
+    /// - Parameter files: 檔案清單
+    /// - Returns: 是否超過大小限制
+    static func exceedsSizeLimit(_ files: [FileItem]) -> Bool {
+        let totalSize = files.reduce(0) { $0 + $1.size }
+        return totalSize > mbToBytes(maxTotalSizeMB)
+    }
+    
+    /// 計算檔案總大小（MB）
+    /// - Parameter files: 檔案清單
+    /// - Returns: 總大小（MB）
+    static func totalSizeInMB(_ files: [FileItem]) -> Double {
+        let totalBytes = files.reduce(0) { $0 + $1.size }
+        return Double(totalBytes) / (1024 * 1024)
+    }
+}
+
 // MARK: - 轉換格式
 /// 支援的圖片轉換格式列舉
 /// 定義了 HEIC 可以轉換的目標格式

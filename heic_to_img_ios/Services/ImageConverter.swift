@@ -90,6 +90,8 @@ enum ConversionError: LocalizedError {
     case networkError(String)
     case apiError(String)
     case unknownError
+    case tooManyFiles(Int, Int) // (current, maximum)
+    case fileTooLarge(String)
     
     var errorDescription: String? {
         switch self {
@@ -111,6 +113,10 @@ enum ConversionError: LocalizedError {
             return "API 錯誤: \(message)"
         case .unknownError:
             return "未知錯誤"
+        case .tooManyFiles(let current, let maximum):
+            return "檔案數量過多：\(current) 個檔案超過限制（最大 \(maximum) 個）"
+        case .fileTooLarge(let details):
+            return "檔案過大：\(details)"
         }
     }
 }
