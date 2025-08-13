@@ -314,10 +314,11 @@
             // 設置圓角矩形背景
             const cornerRadius = size * 0.225; // iOS 標準圓角比例
             
-            // 創建漸層背景
+            // 創建更豐富的漸層背景
             const gradient = ctx.createLinearGradient(0, 0, size, size);
-            gradient.addColorStop(0, '#5A78FF');
-            gradient.addColorStop(1, '#963CFF');
+            gradient.addColorStop(0, '#667EEA');
+            gradient.addColorStop(0.5, '#764BA2');
+            gradient.addColorStop(1, '#6B21A8');
             
             // 繪製圓角矩形背景
             ctx.beginPath();
@@ -334,12 +335,13 @@
             ctx.fillStyle = gradient;
             ctx.fill();
             
-            // 添加內部光暈效果
+            // 添加細緻的光暈效果
             const glowGradient = ctx.createRadialGradient(
-                size * 0.5, size * 0.3, 0,
-                size * 0.5, size * 0.5, size * 0.7
+                size * 0.3, size * 0.3, 0,
+                size * 0.5, size * 0.5, size * 0.8
             );
-            glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+            glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
+            glowGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
             glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
             
             ctx.beginPath();
@@ -360,92 +362,124 @@
             ctx.save();
             ctx.translate(size / 2, size / 2);
             
-            // 繪製圖片框架（代表原始圖片）
-            const frameSize = size * 0.35;
-            const frameX = -frameSize * 0.7;
-            const frameY = -frameSize / 2;
+            // 創建一個更現代的設計 - 使用圖層概念
+            
+            // 圖層設定
+            const layerSize = size * 0.4;
+            const offset = size * 0.08;
+            
+            // 先繪製底層（JPG/轉換後的圖片）
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = size * 0.05;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = size * 0.03;
             
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = size * 0.02;
-            
-            // 左側圖片框
             ctx.beginPath();
-            ctx.roundRect(frameX, frameY, frameSize, frameSize, size * 0.03);
+            ctx.roundRect(-layerSize/2 + offset, -layerSize/2 + offset, layerSize, layerSize, size * 0.05);
             ctx.fill();
-            ctx.stroke();
             
-            // 在左側框內添加 HEIC 文字
-            ctx.fillStyle = '#5A78FF';
+            // 重置陰影
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // 在底層右下角添加 JPG 標識（避免被遮擋）
+            ctx.fillStyle = '#764BA2';
             ctx.font = `bold ${size * 0.08}px -apple-system, Arial, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('HEIC', frameX + frameSize / 2, frameY + frameSize / 2);
+            ctx.fillText('JPG', offset + layerSize * 0.25, offset + layerSize * 0.3);
             
-            // 繪製轉換箭頭
-            const arrowStartX = frameX + frameSize + size * 0.05;
-            const arrowEndX = arrowStartX + size * 0.15;
-            const arrowY = 0;
+            // 繪製上層（HEIC）- 在 JPG 層的上方
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = size * 0.06;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = size * 0.04;
             
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+            ctx.beginPath();
+            ctx.roundRect(-layerSize/2 - offset, -layerSize/2 - offset, layerSize, layerSize, size * 0.05);
+            ctx.fill();
+            
+            // 重置陰影
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            
+            // 在上層添加 HEIC 標識
+            ctx.fillStyle = '#667EEA';
+            ctx.font = `bold ${size * 0.1}px -apple-system, Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('HEIC', -offset, -offset);
+            
+            // 在兩個圖層之間添加轉換箭頭
+            ctx.strokeStyle = '#764BA2';
             ctx.lineWidth = size * 0.03;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             
-            // 箭頭主線
+            // 繪製一個從 HEIC 到 JPG 的優雅箭頭（修正方向）
+            const arrowStartX = offset * 0.3;
+            const arrowStartY = offset * 0.3;
+            const arrowEndX = offset + layerSize * 0.15;
+            const arrowEndY = offset + layerSize * 0.15;
+            
+            // 繪製弧形箭頭路徑
             ctx.beginPath();
-            ctx.moveTo(arrowStartX, arrowY);
-            ctx.lineTo(arrowEndX, arrowY);
+            ctx.moveTo(arrowStartX, arrowStartY);
+            
+            // 使用貝塞爾曲線創建優雅的弧形（向右下方彎曲）
+            const controlX = arrowStartX + size * 0.12;
+            const controlY = arrowStartY + size * 0.02;
+            ctx.quadraticCurveTo(controlX, controlY, arrowEndX, arrowEndY);
             ctx.stroke();
             
-            // 箭頭頭部
+            // 箭頭尖端（指向 JPG）
+            const dx = arrowEndX - controlX;
+            const dy = arrowEndY - controlY;
+            const angle = Math.atan2(dy, dx);
+            const arrowLength = size * 0.04;
+            
             ctx.beginPath();
-            ctx.moveTo(arrowEndX - size * 0.05, arrowY - size * 0.05);
-            ctx.lineTo(arrowEndX, arrowY);
-            ctx.lineTo(arrowEndX - size * 0.05, arrowY + size * 0.05);
+            ctx.moveTo(arrowEndX, arrowEndY);
+            ctx.lineTo(
+                arrowEndX - arrowLength * Math.cos(angle - Math.PI / 6),
+                arrowEndY - arrowLength * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.moveTo(arrowEndX, arrowEndY);
+            ctx.lineTo(
+                arrowEndX - arrowLength * Math.cos(angle + Math.PI / 6),
+                arrowEndY - arrowLength * Math.sin(angle + Math.PI / 6)
+            );
             ctx.stroke();
             
-            // 右側圖片框（代表轉換後的圖片）
-            const frame2X = arrowEndX + size * 0.05;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = size * 0.02;
+            // 添加裝飾性的像素點
+            const pixelSize = size * 0.015;
+            const colors = ['rgba(102, 126, 234, 0.6)', 'rgba(118, 75, 162, 0.6)', 'rgba(107, 33, 168, 0.6)'];
             
-            ctx.beginPath();
-            ctx.roundRect(frame2X, frameY, frameSize, frameSize, size * 0.03);
-            ctx.fill();
-            ctx.stroke();
+            // 左上角像素組
+            for (let i = 0; i < 3; i++) {
+                ctx.fillStyle = colors[i];
+                ctx.fillRect(
+                    -size * 0.42 + i * pixelSize * 1.5,
+                    -size * 0.42,
+                    pixelSize,
+                    pixelSize
+                );
+            }
             
-            // 在右側框內添加 JPG/PNG 圖標
-            ctx.fillStyle = '#963CFF';
-            ctx.font = `bold ${size * 0.08}px -apple-system, Arial, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('IMG', frame2X + frameSize / 2, frameY + frameSize / 2);
-            
-            // 添加裝飾性元素 - 小圓點
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            const dotRadius = size * 0.015;
-            
-            // 左上角圓點
-            ctx.beginPath();
-            ctx.arc(-size * 0.35, -size * 0.35, dotRadius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // 右上角圓點
-            ctx.beginPath();
-            ctx.arc(size * 0.35, -size * 0.35, dotRadius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // 左下角圓點
-            ctx.beginPath();
-            ctx.arc(-size * 0.35, size * 0.35, dotRadius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // 右下角圓點
-            ctx.beginPath();
-            ctx.arc(size * 0.35, size * 0.35, dotRadius, 0, Math.PI * 2);
-            ctx.fill();
+            // 右下角像素組
+            for (let i = 0; i < 3; i++) {
+                ctx.fillStyle = colors[i];
+                ctx.fillRect(
+                    size * 0.42 - (2-i) * pixelSize * 1.5,
+                    size * 0.42 - pixelSize,
+                    pixelSize,
+                    pixelSize
+                );
+            }
             
             ctx.restore();
         }
