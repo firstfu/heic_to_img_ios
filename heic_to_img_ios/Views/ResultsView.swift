@@ -866,60 +866,136 @@ struct SelectionToolbarView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 毛玻璃效果背景
+            // 分隔線
             Rectangle()
-                .fill(.ultraThinMaterial)
-                .frame(height: 88)
-                .overlay(
-                    HStack(spacing: 20) {
-                        // 已選擇項目數量
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("已選擇")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            Color.primary.opacity(0.1),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 0.5)
+            
+            // 主要內容區域
+            ZStack {
+                // 背景毛玻璃效果
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(.systemBackground).opacity(0.95),
+                                Color(.systemBackground).opacity(0.98)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                
+                // 內容
+                HStack(spacing: 0) {
+                    // 左側：已選擇項目資訊
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("已選擇")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.blue)
                             
                             Text("\(selectedCount) 個項目")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .foregroundColor(.primary)
+                                .animation(.easeInOut(duration: 0.3), value: selectedCount)
                         }
-                        
-                        Spacer()
-                        
-                        // 打包並分享按鈕
-                        Button(action: onCreateZip) {
-                            HStack(spacing: 8) {
+                    }
+                    
+                    Spacer()
+                    
+                    // 右側：打包分享按鈕
+                    Button(action: onCreateZip) {
+                        HStack(spacing: 10) {
+                            // 圖標
+                            ZStack {
                                 if isCreatingZip {
                                     ProgressView()
-                                        .scaleEffect(0.8)
+                                        .scaleEffect(0.9)
                                         .tint(.white)
                                 } else {
                                     Image(systemName: "archivebox.fill")
-                                        .font(.system(size: 16, weight: .medium))
+                                        .font(.system(size: 17, weight: .semibold))
+                                        .foregroundColor(.white)
                                 }
-                                
-                                Text(isCreatingZip ? "打包中..." : "打包分享")
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
                             }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 25)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: selectedCount > 0 ? [Color.blue, Color.purple] : [Color.gray],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                            )
+                            .frame(width: 20, height: 20)
+                            
+                            // 文字
+                            Text(isCreatingZip ? "打包中..." : "打包分享")
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                .foregroundColor(.white)
                         }
-                        .disabled(selectedCount == 0 || isCreatingZip)
-                        .animation(.easeInOut(duration: 0.2), value: selectedCount)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 28)
+                                .fill(
+                                    selectedCount > 0 && !isCreatingZip ? 
+                                    LinearGradient(
+                                        colors: [
+                                            Color.blue,
+                                            Color.blue.opacity(0.8),
+                                            Color.purple
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ) :
+                                    LinearGradient(
+                                        colors: [Color.gray.opacity(0.6), Color.gray.opacity(0.4)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shadow(
+                                    color: selectedCount > 0 && !isCreatingZip ? 
+                                        Color.blue.opacity(0.4) : Color.clear,
+                                    radius: selectedCount > 0 && !isCreatingZip ? 8 : 0,
+                                    x: 0,
+                                    y: 4
+                                )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 28)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.3),
+                                            Color.clear
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1
+                                )
+                                .opacity(selectedCount > 0 && !isCreatingZip ? 1 : 0)
+                        )
+                        .scaleEffect(selectedCount > 0 && !isCreatingZip ? 1.0 : 0.95)
+                        .animation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0), value: selectedCount)
+                        .animation(.easeInOut(duration: 0.2), value: isCreatingZip)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 34) // 留出 Tab Bar 空間
-                )
+                    .disabled(selectedCount == 0 || isCreatingZip)
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(height: 88)
         }
         .ignoresSafeArea(.container, edges: .bottom)
     }
