@@ -11,6 +11,9 @@ struct ResultsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var showDeleteConfirmation = false
     @State private var selectedResult: ConversionResult?
+    @State private var isCreatingZip = false
+    @State private var zipError: Error?
+    @State private var showZipError = false
     
     var body: some View {
         NavigationView {
@@ -43,9 +46,14 @@ struct ResultsView: View {
                         // 轉換結果列表
                         ScrollView {
                             LazyVStack(spacing: 12) {
-                                ForEach(appState.conversionResults, id: \.originalFile.id) { result in
+                                ForEach(appState.conversionResults, id: \.id) { result in
                                     EnhancedResultRowView(
                                         result: result,
+                                        isSelectionMode: appState.isSelectionMode,
+                                        isSelected: appState.selectedResultIds.contains(result.id),
+                                        onSelect: {
+                                            appState.toggleSelection(for: result.id)
+                                        },
                                         onDelete: {
                                             selectedResult = result
                                             showDeleteConfirmation = true
@@ -59,26 +67,62 @@ struct ResultsView: View {
                         }
                     }
                 }
+                
+                // 選擇模式底部工具列
+                if appState.isSelectionMode {
+                    VStack {
+                        Spacer()
+                        SelectionToolbarView(
+                            selectedCount: appState.selectedResultIds.count,
+                            isCreatingZip: isCreatingZip,
+                            onCreateZip: createAndShareZip
+                        )
+                    }
+                }
             }
             .navigationTitle("轉換結果")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 if !appState.conversionResults.isEmpty {
+                    // 選擇模式按鈕
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        if appState.isSelectionMode {
+                            Button("取消") {
+                                appState.endSelectionMode()
+                            }
+                        } else {
+                            Button("選擇") {
+                                appState.startSelectionMode()
+                            }
+                        }
+                    }
+                    
+                    // 功能選單
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Menu {
-                            Button("分享全部", systemImage: "square.and.arrow.up") {
-                                shareAllResults()
+                        if appState.isSelectionMode {
+                            Button(appState.selectedResultIds.count == appState.conversionResults.count ? "取消全選" : "全選") {
+                                if appState.selectedResultIds.count == appState.conversionResults.count {
+                                    appState.deselectAllResults()
+                                } else {
+                                    appState.selectAllResults()
+                                }
                             }
-                            
-                            Divider()
-                            
-                            Button("清除全部", systemImage: "trash", role: .destructive) {
-                                showDeleteConfirmation = true
+                        } else {
+                            Menu {
+                                Button("分享全部", systemImage: "square.and.arrow.up") {
+                                    shareAllResults()
+                                }
+                                
+                                Divider()
+                                
+                                Button("清除全部", systemImage: "trash", role: .destructive) {
+                                    showDeleteConfirmation = true
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.primary)
                             }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.primary)
                         }
                     }
                 }
@@ -100,11 +144,16 @@ struct ResultsView: View {
                     Text("確定要清除所有轉換結果嗎？此操作無法復原。")
                 }
             }
+            .alert("打包失敗", isPresented: $showZipError) {
+                Button("確定", role: .cancel) { }
+            } message: {
+                Text(zipError?.localizedDescription ?? "無法建立 ZIP 檔案")
+            }
         }
     }
     
     private func deleteResult(_ result: ConversionResult) {
-        appState.conversionResults.removeAll { $0.originalFile.id == result.originalFile.id }
+        appState.conversionResults.removeAll { $0.id == result.id }
         
         // 刪除本地文件
         try? FileManager.default.removeItem(at: result.outputURL)
@@ -113,6 +162,33 @@ struct ResultsView: View {
     private func shareAllResults() {
         let urls = appState.conversionResults.map { $0.outputURL }
         shareFiles(urls: urls, description: "使用 HEIC 轉檔專家轉換的圖片")
+    }
+    
+    private func createAndShareZip() {
+        guard !appState.selectedResultIds.isEmpty else { return }
+        
+        let selectedResults = appState.selectedResults
+        let urls = selectedResults.map { $0.outputURL }
+        
+        isCreatingZip = true
+        
+        SimpleZipService.createZip(from: urls, outputName: "HEIC轉換結果") { result in
+            self.isCreatingZip = false
+            
+            switch result {
+            case .success(let zipURL):
+                shareFiles(urls: [zipURL], description: "使用 HEIC 轉檔專家轉換並打包的圖片")
+                
+                // 分享完成後清理臨時檔案
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                    SimpleZipService.cleanupTempFile(at: zipURL)
+                }
+                
+            case .failure(let error):
+                self.zipError = error
+                self.showZipError = true
+            }
+        }
     }
 }
 
@@ -332,14 +408,32 @@ struct ResultsStatItemView: View {
 // MARK: - 增強的結果行視圖
 struct EnhancedResultRowView: View {
     let result: ConversionResult
+    let isSelectionMode: Bool
+    let isSelected: Bool
+    let onSelect: () -> Void
     let onDelete: () -> Void
     @State private var showingPreview = false
     
     var body: some View {
         HStack(spacing: 16) {
+            // 選擇模式的 checkbox
+            if isSelectionMode {
+                Button(action: onSelect) {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(isSelected ? .blue : .secondary)
+                        .animation(.easeInOut(duration: 0.2), value: isSelected)
+                }
+                .buttonStyle(.plain)
+            }
+            
             // 檔案縮圖或圖標
             Button {
-                showingPreview = true
+                if isSelectionMode {
+                    onSelect()
+                } else {
+                    showingPreview = true
+                }
             } label: {
                 if let uiImage = UIImage(contentsOfFile: result.outputURL.path) {
                     Image(uiImage: uiImage)
@@ -348,6 +442,14 @@ struct EnhancedResultRowView: View {
                         .frame(width: 64, height: 64)
                         .clipped()
                         .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(
+                                    isSelected ? Color.blue : Color.clear,
+                                    lineWidth: isSelected ? 3 : 0
+                                )
+                                .animation(.easeInOut(duration: 0.2), value: isSelected)
+                        )
                 } else {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(
@@ -371,6 +473,14 @@ struct EnhancedResultRowView: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(
+                                    isSelected ? Color.blue : Color.clear,
+                                    lineWidth: isSelected ? 3 : 0
+                                )
+                                .animation(.easeInOut(duration: 0.2), value: isSelected)
                         )
                 }
             }
@@ -425,27 +535,29 @@ struct EnhancedResultRowView: View {
             
             Spacer()
             
-            // 操作按鈕
-            HStack(spacing: 8) {
-                // 分享按鈕
-                Button {
-                    shareFile(url: result.outputURL)
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.blue)
+            // 操作按鈕（非選擇模式時顯示）
+            if !isSelectionMode {
+                HStack(spacing: 8) {
+                    // 分享按鈕
+                    Button {
+                        shareFile(url: result.outputURL)
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.blue)
+                    }
+                    .buttonStyle(ActionButtonStyle(backgroundColor: .blue))
+                    
+                    // 刪除按鈕
+                    Button {
+                        onDelete()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(ActionButtonStyle(backgroundColor: .red))
                 }
-                .buttonStyle(ActionButtonStyle(backgroundColor: .blue))
-                
-                // 刪除按鈕
-                Button {
-                    onDelete()
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.red)
-                }
-                .buttonStyle(ActionButtonStyle(backgroundColor: .red))
             }
         }
         .padding(20)
@@ -743,6 +855,73 @@ func shareFiles(urls: [URL], description: String) {
         }
         
         topController.present(activityViewController, animated: true)
+    }
+}
+
+// MARK: - 選擇模式底部工具列
+struct SelectionToolbarView: View {
+    let selectedCount: Int
+    let isCreatingZip: Bool
+    let onCreateZip: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // 毛玻璃效果背景
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .frame(height: 88)
+                .overlay(
+                    HStack(spacing: 20) {
+                        // 已選擇項目數量
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("已選擇")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                            
+                            Text("\(selectedCount) 個項目")
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .foregroundColor(.primary)
+                        }
+                        
+                        Spacer()
+                        
+                        // 打包並分享按鈕
+                        Button(action: onCreateZip) {
+                            HStack(spacing: 8) {
+                                if isCreatingZip {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .tint(.white)
+                                } else {
+                                    Image(systemName: "archivebox.fill")
+                                        .font(.system(size: 16, weight: .medium))
+                                }
+                                
+                                Text(isCreatingZip ? "打包中..." : "打包分享")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 25)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: selectedCount > 0 ? [Color.blue, Color.purple] : [Color.gray],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                        }
+                        .disabled(selectedCount == 0 || isCreatingZip)
+                        .animation(.easeInOut(duration: 0.2), value: selectedCount)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 34) // 留出 Tab Bar 空間
+                )
+        }
+        .ignoresSafeArea(.container, edges: .bottom)
     }
 }
 

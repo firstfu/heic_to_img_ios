@@ -257,7 +257,9 @@ class ConversionJob: ObservableObject, Identifiable {
 // MARK: - 轉換結果
 /// 單一檔案轉換的結果資料
 /// 包含轉換前後的詳細資訊
-struct ConversionResult {
+struct ConversionResult: Identifiable {
+    /// 唯一識別符
+    let id = UUID()
     /// 原始檔案項目
     let originalFile: FileItem
     /// 輸出檔案的 URL

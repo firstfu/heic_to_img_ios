@@ -61,6 +61,12 @@ class AppState: ObservableObject {
     /// 最近一次批次轉換的統計資料
     @Published var lastConversionStats: BatchConversionStats?
     
+    // MARK: - 選擇模式狀態
+    /// 是否處於選擇模式
+    @Published var isSelectionMode: Bool = false
+    /// 已選擇的結果項目 ID 集合
+    @Published var selectedResultIds: Set<UUID> = []
+    
     // MARK: - 錯誤處理
     /// 當前發生的錯誤
     @Published var currentError: AppError?
@@ -239,6 +245,58 @@ class AppState: ObservableObject {
     
     func restorePurchases() {
         // TODO: 實作 In-App Purchase 恢復邏輯
+    }
+    
+    // MARK: - 選擇模式管理
+    /// 開始選擇模式
+    func startSelectionMode() {
+        isSelectionMode = true
+        selectedResultIds.removeAll()
+    }
+    
+    /// 結束選擇模式
+    func endSelectionMode() {
+        isSelectionMode = false
+        selectedResultIds.removeAll()
+    }
+    
+    /// 切換選擇模式
+    func toggleSelectionMode() {
+        if isSelectionMode {
+            endSelectionMode()
+        } else {
+            startSelectionMode()
+        }
+    }
+    
+    /// 切換項目的選擇狀態
+    /// - Parameter resultId: 結果項目的 ID
+    func toggleSelection(for resultId: UUID) {
+        if selectedResultIds.contains(resultId) {
+            selectedResultIds.remove(resultId)
+        } else {
+            selectedResultIds.insert(resultId)
+        }
+    }
+    
+    /// 選擇全部項目
+    func selectAllResults() {
+        selectedResultIds = Set(conversionResults.map { $0.id })
+    }
+    
+    /// 取消選擇全部項目
+    func deselectAllResults() {
+        selectedResultIds.removeAll()
+    }
+    
+    /// 獲取已選擇的結果項目
+    var selectedResults: [ConversionResult] {
+        return conversionResults.filter { selectedResultIds.contains($0.id) }
+    }
+    
+    /// 是否有選擇的項目
+    var hasSelectedResults: Bool {
+        return !selectedResultIds.isEmpty
     }
 }
 
