@@ -186,6 +186,16 @@ struct SettingsView: View {
                     }
                     .foregroundColor(AppColors.brandBlue)
                     
+                    NavigationLink(destination: PrivacyPolicyView()) {
+                        Text("隱私權政策")
+                            .foregroundColor(AppColors.brandBlue)
+                    }
+                    
+                    NavigationLink(destination: TermsOfServiceView()) {
+                        Text("使用者條款")
+                            .foregroundColor(AppColors.brandBlue)
+                    }
+                    
                     Button("重置設定") {
                         settings.reset()
                     }
