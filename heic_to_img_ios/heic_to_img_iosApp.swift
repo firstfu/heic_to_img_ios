@@ -55,7 +55,7 @@ struct HeicMasterProApp: App {
             }
             .onAppear {
                 // 2.5 秒後隱藏啟動畫面
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     withAnimation(.easeInOut(duration: 0.8)) {
                         isShowingLaunchScreen = false
                     }
