@@ -21,6 +21,7 @@
     "deny": [],
     "additionalDirectories": [
       "/Users/firstfu/Desktop/heic_to_img_workspace/heic_to_img_api"
-    ]
+    ],
+    "defaultMode": "acceptEdits"
   }
 }

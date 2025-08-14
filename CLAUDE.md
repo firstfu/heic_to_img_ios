@@ -107,3 +107,37 @@ swiftlint --fix
   - 執行指令: `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`
   - 使用 pillow-heif 進行伺服器端圖片轉換
   - Python 3.11+ 環境，使用 uv 管理依賴
+
+## 應用程式標識
+
+- **應用名稱**: HeicMasterProApp (內部名稱) / ImageMaster (顯示名稱)
+- **目標裝置**: iPhone/iPad，支援 iOS 18.0+
+
+## 核心服務架構
+
+### 轉換服務層級
+- **ImageConverter**: 主要轉換協調器，使用本地轉換服務
+- **LocalImageConverterService**: 實際的圖片轉換實作，基於 CoreImage
+- **APIService**: 可選的雲端轉換服務（與 FastAPI 後端整合）
+- **SimpleZipService**: 批次轉換的打包服務
+
+### 狀態管理模式
+- 使用 `@Observable` 協議管理應用狀態 (iOS 17+)
+- `ConversionSettings` 和 `AppState` 為主要狀態容器
+- 透過 `@StateObject` 和 `@EnvironmentObject` 進行狀態注入
+
+## 快速開發指令
+
+```bash
+# 快速建置並在模擬器運行
+xcrun simctl boot "iPhone 16 Pro" && xcodebuild -project heic_to_img_ios.xcodeproj -scheme heic_to_img_ios -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build install
+
+# 檢查專案設定
+xcodebuild -project heic_to_img_ios.xcodeproj -showBuildSettings | grep -E "(PRODUCT_BUNDLE_IDENTIFIER|IPHONEOS_DEPLOYMENT_TARGET|SWIFT_VERSION)"
+```
+
+### 測試與品質保證
+
+- 專案目前不包含單元測試檔案
+- 建議在實際裝置上測試圖片轉換功能
+- 使用 Xcode 16.4+ 的檔案系統同步群組功能管理檔案結構
