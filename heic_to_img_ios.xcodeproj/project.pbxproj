@@ -256,7 +256,7 @@
 				DEVELOPMENT_TEAM = WY468E45SJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = HEICMaster;
+				INFOPLIST_KEY_CFBundleDisplayName = HeicMaster;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "本應用需要將轉換後的照片儲存到您的相簿。";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "本應用需要存取您的相簿，以讀取 HEIC 照片進行格式轉換。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -293,7 +293,7 @@
 				DEVELOPMENT_TEAM = WY468E45SJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = HEICMaster;
+				INFOPLIST_KEY_CFBundleDisplayName = HeicMaster;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "本應用需要將轉換後的照片儲存到您的相簿。";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "本應用需要存取您的相簿，以讀取 HEIC 照片進行格式轉換。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

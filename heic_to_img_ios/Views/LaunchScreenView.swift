@@ -16,24 +16,24 @@ struct LaunchScreenView: View {
     @State private var subtitleOpacity: Double = 0.0
     @State private var loadingOpacity: Double = 0.0
     @State private var pulseAnimation: Bool = false
-    
+
     var body: some View {
         ZStack {
             // 背景漸層
             backgroundGradient
                 .ignoresSafeArea()
-            
+
             VStack(spacing: AppSpacing.xl) {
                 Spacer()
-                
+
                 // Logo 區域
                 logoSection
-                
+
                 // 文字區域
                 textSection
-                
+
                 Spacer()
-                
+
                 // 載入指示器
                 loadingSection
             }
@@ -43,7 +43,7 @@ struct LaunchScreenView: View {
             startAnimationSequence()
         }
     }
-    
+
     // MARK: - 背景漸層
     private var backgroundGradient: some View {
         Rectangle()
@@ -58,7 +58,7 @@ struct LaunchScreenView: View {
                 )
             )
     }
-    
+
     // MARK: - Logo 區域
     private var logoSection: some View {
         VStack(spacing: AppSpacing.lg) {
@@ -77,16 +77,16 @@ struct LaunchScreenView: View {
                 .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
         }
     }
-    
+
     // MARK: - 文字區域
     private var textSection: some View {
         VStack(spacing: AppSpacing.md) {
             // 主標題
-            Text("ImageMaster")
+            Text("HeicMaster")
                 .font(.system(size: 36, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
                 .opacity(titleOpacity)
-            
+
             // 副標題
             Text("HEIC 圖片轉換專家")
                 .font(.system(size: 18, weight: .medium, design: .rounded))
@@ -94,7 +94,7 @@ struct LaunchScreenView: View {
                 .opacity(subtitleOpacity)
         }
     }
-    
+
     // MARK: - 載入指示器
     private var loadingSection: some View {
         VStack(spacing: AppSpacing.md) {
@@ -114,7 +114,7 @@ struct LaunchScreenView: View {
                 }
             }
             .opacity(loadingOpacity)
-            
+
             // 載入文字
             Text("載入中...")
                 .font(.system(size: 14, weight: .medium))
@@ -122,7 +122,7 @@ struct LaunchScreenView: View {
                 .opacity(loadingOpacity)
         }
     }
-    
+
     // MARK: - 動畫序列
     private func startAnimationSequence() {
         // 第一階段：Logo 淡入並放大 (0.0s - 0.5s)
@@ -130,21 +130,21 @@ struct LaunchScreenView: View {
             logoScale = 1.0
             logoOpacity = 1.0
         }
-        
+
         // 第二階段：主標題淡入 (0.3s - 0.8s)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             withAnimation(.easeOut(duration: 0.5)) {
                 titleOpacity = 1.0
             }
         }
-        
+
         // 第三階段：副標題淡入 (0.6s - 1.1s)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             withAnimation(.easeOut(duration: 0.5)) {
                 subtitleOpacity = 1.0
             }
         }
-        
+
         // 第四階段：載入指示器淡入並開始脈動 (0.9s - 1.4s)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
             withAnimation(.easeOut(duration: 0.5)) {
