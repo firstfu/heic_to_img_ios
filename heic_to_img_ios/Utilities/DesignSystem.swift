@@ -169,7 +169,7 @@ struct AppConstants {
     static let previewSize: CGSize = CGSize(width: 300, height: 300)
 
     // App Store 連結和其他常數
-    static let appStoreURL = "https://apps.apple.com/app/heicmaster-pro/id123456789"
+    static let appStoreURL = "hhttps://apps.apple.com/us/app/heicmaster/id6750487186"
     static let supportEmail = "firefirstfu@gmail.com"
     static let privacyPolicyURL = "https://heicmaster.com/privacy"
     static let termsURL = "https://heicmaster.com/terms"
