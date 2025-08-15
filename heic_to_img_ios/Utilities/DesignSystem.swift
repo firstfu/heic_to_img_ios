@@ -161,6 +161,7 @@ struct AppAnimations {
     static let elastic = Animation.interpolatingSpring(stiffness: 180, damping: 15)
 }
 
+
 // MARK: - 設備常數
 struct AppConstants {
     static let maxFileSize: Int64 = 100 * 1024 * 1024 // 100MB

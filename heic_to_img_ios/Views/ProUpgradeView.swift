@@ -188,6 +188,7 @@ struct ProUpgradeView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .onAppear {
             withAnimation {
                 showFeatures = true

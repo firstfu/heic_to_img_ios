@@ -220,6 +220,7 @@ struct SettingsView: View {
                 Text("確定要清除所有轉換記錄和檔案嗎？此操作無法復原。")
             }
         }
+        .navigationViewStyle(.stack)
     }
     
     private func clearConversionRecords() {

@@ -136,6 +136,7 @@ struct ConversionView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
     
     // MARK: - 視圖組件

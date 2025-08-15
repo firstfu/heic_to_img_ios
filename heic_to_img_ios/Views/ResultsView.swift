@@ -154,6 +154,7 @@ struct ResultsView: View {
                 Text(zipError?.localizedDescription ?? "無法建立 ZIP 檔案")
             }
         }
+        .navigationViewStyle(.stack)
     }
     
     private func deleteResult(_ result: ConversionResult) {
