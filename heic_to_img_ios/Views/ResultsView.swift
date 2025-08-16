@@ -606,55 +606,45 @@ struct EnhancedResultRowView: View {
             .buttonStyle(.plain)
 
             // 檔案資訊
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 // 檔案名稱
                 Text(result.originalFile.name)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
                     .lineLimit(1)
 
-                // 空間變化標籤
-                HStack(spacing: 6) {
-                    Image(systemName: result.savedSpace >= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
-                        .font(.system(size: 14, weight: .medium))
-                    
-                    Text(result.savedSpace >= 0 ? "節省" : "增加")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                    
+                // 空間變化標籤 - 使用已有的 savedSpaceString
+                Label {
                     Text(result.savedSpaceString)
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
+                } icon: {
+                    Image(systemName: result.savedSpace >= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
+                        .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundColor(result.savedSpace >= 0 ? .green : .orange)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill((result.savedSpace >= 0 ? Color.green : Color.orange).opacity(0.1))
-                )
 
-                // 檔案大小資訊 - 使用兩行顯示
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("原始大小")
+                // 檔案大小資訊 - 分行顯示
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text("原始")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
                         
                         Text(ByteCountFormatter.string(fromByteCount: result.originalSize, countStyle: .file))
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundColor(.secondary)
                     }
                     
-                    HStack(spacing: 6) {
-                        Text("輸出大小")
+                    HStack(spacing: 4) {
+                        Text("輸出")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(.primary.opacity(0.7))
                         
                         Text(ByteCountFormatter.string(fromByteCount: result.outputSize, countStyle: .file))
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                     }
                 }
-                .padding(.leading, 2)
             }
 
             Spacer()
