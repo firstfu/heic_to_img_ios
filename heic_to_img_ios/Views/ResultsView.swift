@@ -615,16 +615,6 @@ struct EnhancedResultRowView: View {
                 
                 // 詳細資訊
                 HStack(spacing: 12) {
-                    // 處理時間
-                    Label {
-                        Text(String(format: "%.1fs", result.processingTime))
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                    } icon: {
-                        Image(systemName: "clock")
-                            .font(.system(size: 11, weight: .medium))
-                    }
-                    .foregroundColor(.secondary)
-                    
                     // 空間變化
                     Label {
                         Text(result.savedSpaceString)
@@ -637,18 +627,23 @@ struct EnhancedResultRowView: View {
                 }
                 
                 // 檔案大小資訊
-                HStack(spacing: 4) {
-                    Text("原始: \(ByteCountFormatter.string(fromByteCount: result.originalSize, countStyle: .file))")
+                HStack(spacing: 2) {
+                    Text("原始:")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                    
+                    Text(ByteCountFormatter.string(fromByteCount: result.originalSize, countStyle: .file))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                     
                     Text("→")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 2)
                     
-                    Text("\(ByteCountFormatter.string(fromByteCount: result.outputSize, countStyle: .file))")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
+                    Text(ByteCountFormatter.string(fromByteCount: result.outputSize, countStyle: .file))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
                 }
             }
             
