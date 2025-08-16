@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Photos
 
 struct ResultsView: View {
     @EnvironmentObject private var appState: AppState
@@ -14,6 +15,10 @@ struct ResultsView: View {
     @State private var isCreatingZip = false
     @State private var zipError: Error?
     @State private var showZipError = false
+    @State private var isSavingToPhotoLibrary = false
+    @State private var saveError: Error?
+    @State private var showSaveError = false
+    @State private var showSaveSuccess = false
     
     var body: some View {
         NavigationView {
@@ -57,6 +62,11 @@ struct ResultsView: View {
                                         onDelete: {
                                             selectedResult = result
                                             showDeleteConfirmation = true
+                                        },
+                                        onSaveToPhotoLibrary: {
+                                            Task {
+                                                await saveSingleToPhotoLibrary(result: result)
+                                            }
                                         }
                                     )
                                 }
@@ -79,7 +89,9 @@ struct ResultsView: View {
                             selectedCount: appState.selectedResultIds.count,
                             isCreatingZip: isCreatingZip,
                             shouldAutoSplit: SimpleZipService.shouldAutoSplit(urls: selectedURLs),
-                            onCreateZip: createAndShareZip
+                            onCreateZip: createAndShareZip,
+                            isSavingToPhotoLibrary: isSavingToPhotoLibrary,
+                            onSaveToPhotoLibrary: saveSelectedToPhotoLibrary
                         )
                     }
                 }
@@ -117,6 +129,10 @@ struct ResultsView: View {
                                     shareAllResults()
                                 }
                                 
+                                Button("存到相簿", systemImage: "photo.badge.plus") {
+                                    saveAllToPhotoLibrary()
+                                }
+                                
                                 Divider()
                                 
                                 Button("清除全部", systemImage: "trash", role: .destructive) {
@@ -152,6 +168,16 @@ struct ResultsView: View {
                 Button("確定", role: .cancel) { }
             } message: {
                 Text(zipError?.localizedDescription ?? "無法建立 ZIP 檔案")
+            }
+            .alert("儲存失敗", isPresented: $showSaveError) {
+                Button("確定", role: .cancel) { }
+            } message: {
+                Text(saveError?.localizedDescription ?? "無法儲存到相簿")
+            }
+            .alert("儲存成功", isPresented: $showSaveSuccess) {
+                Button("確定", role: .cancel) { }
+            } message: {
+                Text("已成功儲存到相簿")
             }
         }
         .navigationViewStyle(.stack)
@@ -224,6 +250,61 @@ struct ResultsView: View {
                     self.zipError = error
                     self.showZipError = true
                 }
+            }
+        }
+    }
+    
+    private func saveAllToPhotoLibrary() {
+        Task {
+            do {
+                isSavingToPhotoLibrary = true
+                let urls = appState.conversionResults.map { $0.outputURL }
+                try await PhotoLibraryService.shared.saveMultipleImagesToPhotoLibrary(urls: urls)
+                await MainActor.run {
+                    isSavingToPhotoLibrary = false
+                    showSaveSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    isSavingToPhotoLibrary = false
+                    saveError = error
+                    showSaveError = true
+                }
+            }
+        }
+    }
+    
+    private func saveSelectedToPhotoLibrary() {
+        Task {
+            do {
+                isSavingToPhotoLibrary = true
+                let selectedResults = appState.selectedResults
+                let urls = selectedResults.map { $0.outputURL }
+                try await PhotoLibraryService.shared.saveMultipleImagesToPhotoLibrary(urls: urls)
+                await MainActor.run {
+                    isSavingToPhotoLibrary = false
+                    showSaveSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    isSavingToPhotoLibrary = false
+                    saveError = error
+                    showSaveError = true
+                }
+            }
+        }
+    }
+    
+    private func saveSingleToPhotoLibrary(result: ConversionResult) async {
+        do {
+            try await PhotoLibraryService.shared.saveImageToPhotoLibrary(at: result.outputURL)
+            await MainActor.run {
+                showSaveSuccess = true
+            }
+        } catch {
+            await MainActor.run {
+                saveError = error
+                showSaveError = true
             }
         }
     }
@@ -449,6 +530,7 @@ struct EnhancedResultRowView: View {
     let isSelected: Bool
     let onSelect: () -> Void
     let onDelete: () -> Void
+    let onSaveToPhotoLibrary: () -> Void
     @State private var showingPreview = false
     
     var body: some View {
@@ -584,6 +666,16 @@ struct EnhancedResultRowView: View {
                             .foregroundColor(.blue)
                     }
                     .buttonStyle(ActionButtonStyle(backgroundColor: .blue))
+                    
+                    // 儲存到相簿按鈕
+                    Button {
+                        onSaveToPhotoLibrary()
+                    } label: {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.green)
+                    }
+                    .buttonStyle(ActionButtonStyle(backgroundColor: .green))
                     
                     // 刪除按鈕
                     Button {
@@ -901,6 +993,8 @@ struct SelectionToolbarView: View {
     let isCreatingZip: Bool
     let shouldAutoSplit: Bool
     let onCreateZip: () -> Void
+    let isSavingToPhotoLibrary: Bool
+    let onSaveToPhotoLibrary: () -> Void
     
     private var buttonText: String {
         if isCreatingZip {
@@ -985,78 +1079,120 @@ struct SelectionToolbarView: View {
                     
                     Spacer()
                     
-                    // 右側：打包分享按鈕
-                    Button(action: onCreateZip) {
-                        HStack(spacing: 10) {
-                            // 圖標
-                            ZStack {
-                                if isCreatingZip {
-                                    ProgressView()
-                                        .scaleEffect(0.9)
-                                        .tint(.white)
-                                } else {
-                                    Image(systemName: "archivebox.fill")
-                                        .font(.system(size: 17, weight: .semibold))
-                                        .foregroundColor(.white)
+                    // 右側：操作按鈕
+                    HStack(spacing: 12) {
+                        // 儲存到相簿按鈕
+                        Button(action: onSaveToPhotoLibrary) {
+                            HStack(spacing: 8) {
+                                ZStack {
+                                    if isSavingToPhotoLibrary {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .tint(.white)
+                                    } else {
+                                        Image(systemName: "photo.badge.plus")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundColor(.white)
+                                    }
                                 }
+                                .frame(width: 18, height: 18)
+                                
+                                Text(isSavingToPhotoLibrary ? "儲存中..." : "存相簿")
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
                             }
-                            .frame(width: 20, height: 20)
-                            
-                            // 文字
-                            Text(buttonText)
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundColor(.white)
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28)
-                                .fill(
-                                    selectedCount > 0 && !isCreatingZip ? 
-                                    LinearGradient(
-                                        colors: [
-                                            Color.blue,
-                                            Color.blue.opacity(0.8),
-                                            Color.purple
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ) :
-                                    LinearGradient(
-                                        colors: [Color.gray.opacity(0.6), Color.gray.opacity(0.4)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .fill(
+                                        selectedCount > 0 && !isSavingToPhotoLibrary ?
+                                        LinearGradient(
+                                            colors: [
+                                                Color.green,
+                                                Color.green.opacity(0.8)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.gray.opacity(0.6), Color.gray.opacity(0.4)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
                                     )
-                                )
-                                .shadow(
-                                    color: selectedCount > 0 && !isCreatingZip ? 
-                                        Color.blue.opacity(0.4) : Color.clear,
-                                    radius: selectedCount > 0 && !isCreatingZip ? 8 : 0,
-                                    x: 0,
-                                    y: 4
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28)
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.3),
-                                            Color.clear
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: 1
-                                )
-                                .opacity(selectedCount > 0 && !isCreatingZip ? 1 : 0)
-                        )
-                        .scaleEffect(selectedCount > 0 && !isCreatingZip ? 1.0 : 0.95)
-                        .animation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0), value: selectedCount)
-                        .animation(.easeInOut(duration: 0.2), value: isCreatingZip)
+                                    .shadow(
+                                        color: selectedCount > 0 && !isSavingToPhotoLibrary ?
+                                            Color.green.opacity(0.4) : Color.clear,
+                                        radius: selectedCount > 0 && !isSavingToPhotoLibrary ? 6 : 0,
+                                        x: 0,
+                                        y: 3
+                                    )
+                            )
+                            .scaleEffect(selectedCount > 0 && !isSavingToPhotoLibrary ? 1.0 : 0.95)
+                            .animation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0), value: selectedCount)
+                            .animation(.easeInOut(duration: 0.2), value: isSavingToPhotoLibrary)
+                        }
+                        .disabled(selectedCount == 0 || isSavingToPhotoLibrary)
+                        .buttonStyle(.plain)
+                        
+                        // 打包分享按鈕
+                        Button(action: onCreateZip) {
+                            HStack(spacing: 8) {
+                                // 圖標
+                                ZStack {
+                                    if isCreatingZip {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .tint(.white)
+                                    } else {
+                                        Image(systemName: "archivebox.fill")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                                .frame(width: 18, height: 18)
+                                
+                                // 文字
+                                Text(buttonText)
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .fill(
+                                        selectedCount > 0 && !isCreatingZip ? 
+                                        LinearGradient(
+                                            colors: [
+                                                Color.blue,
+                                                Color.blue.opacity(0.8)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.gray.opacity(0.6), Color.gray.opacity(0.4)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .shadow(
+                                        color: selectedCount > 0 && !isCreatingZip ? 
+                                            Color.blue.opacity(0.4) : Color.clear,
+                                        radius: selectedCount > 0 && !isCreatingZip ? 6 : 0,
+                                        x: 0,
+                                        y: 3
+                                    )
+                            )
+                            .scaleEffect(selectedCount > 0 && !isCreatingZip ? 1.0 : 0.95)
+                            .animation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0), value: selectedCount)
+                            .animation(.easeInOut(duration: 0.2), value: isCreatingZip)
+                        }
+                        .disabled(selectedCount == 0 || isCreatingZip)
+                        .buttonStyle(.plain)
                     }
-                    .disabled(selectedCount == 0 || isCreatingZip)
-                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
