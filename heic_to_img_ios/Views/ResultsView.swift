@@ -19,13 +19,13 @@ struct ResultsView: View {
     @State private var saveError: Error?
     @State private var showSaveError = false
     @State private var showSaveSuccess = false
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 // 背景層 - 放在最底層
                 PremiumBackgroundView()
-                
+
                 // 內容層
                 VStack(spacing: 0) {
                     if appState.conversionResults.isEmpty {
@@ -37,7 +37,7 @@ struct ResultsView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.top, 16)
                         }
-                        
+
                         // 一鍵清除全部按鈕
                         if !appState.conversionResults.isEmpty {
                             ClearAllButtonView {
@@ -47,7 +47,7 @@ struct ResultsView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 8)
                         }
-                        
+
                         // 轉換結果列表
                         ScrollView {
                             LazyVStack(spacing: 12) {
@@ -77,14 +77,14 @@ struct ResultsView: View {
                         }
                     }
                 }
-                
+
                 // 選擇模式底部工具列
                 if appState.isSelectionMode {
                     VStack {
                         Spacer()
                         let selectedResults = appState.selectedResults
                         let selectedURLs = selectedResults.map { $0.outputURL }
-                        
+
                         SelectionToolbarView(
                             selectedCount: appState.selectedResultIds.count,
                             isCreatingZip: isCreatingZip,
@@ -112,7 +112,7 @@ struct ResultsView: View {
                             }
                         }
                     }
-                    
+
                     // 功能選單
                     ToolbarItem(placement: .navigationBarTrailing) {
                         if appState.isSelectionMode {
@@ -128,13 +128,13 @@ struct ResultsView: View {
                                 Button("分享全部", systemImage: "square.and.arrow.up") {
                                     shareAllResults()
                                 }
-                                
+
                                 Button("存到相簿", systemImage: "photo.badge.plus") {
                                     saveAllToPhotoLibrary()
                                 }
-                                
+
                                 Divider()
-                                
+
                                 Button("清除全部", systemImage: "trash", role: .destructive) {
                                     showDeleteConfirmation = true
                                 }
@@ -182,33 +182,33 @@ struct ResultsView: View {
         }
         .navigationViewStyle(.stack)
     }
-    
+
     private func deleteResult(_ result: ConversionResult) {
         appState.conversionResults.removeAll { $0.id == result.id }
-        
+
         // 刪除本地文件
         try? FileManager.default.removeItem(at: result.outputURL)
     }
-    
+
     private func shareAllResults() {
         let urls = appState.conversionResults.map { $0.outputURL }
         shareFiles(urls: urls, description: "使用 HEIC 轉檔專家轉換的圖片")
     }
-    
+
     private func createAndShareZip() {
         guard !appState.selectedResultIds.isEmpty else { return }
-        
+
         let selectedResults = appState.selectedResults
         let urls = selectedResults.map { $0.outputURL }
-        
+
         isCreatingZip = true
-        
+
         // 檢查是否需要自動分割
         if SimpleZipService.shouldAutoSplit(urls: urls) {
             // 使用自動分割打包
             SimpleZipService.createZipsWithAutoSplit(from: urls, outputName: "HEIC轉換結果") { result in
                 self.isCreatingZip = false
-                
+
                 switch result {
                 case .success(let zipURLs):
                     if zipURLs.count == 1 {
@@ -219,14 +219,14 @@ struct ResultsView: View {
                         let description = "使用 HEIC 轉檔專家轉換並打包的圖片（共 \(zipURLs.count) 個壓縮檔）"
                         shareFiles(urls: zipURLs, description: description)
                     }
-                    
+
                     // 分享完成後清理臨時檔案
                     DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
                         for zipURL in zipURLs {
                             SimpleZipService.cleanupTempFile(at: zipURL)
                         }
                     }
-                    
+
                 case .failure(let error):
                     self.zipError = error
                     self.showZipError = true
@@ -236,16 +236,16 @@ struct ResultsView: View {
             // 使用單一 ZIP 打包
             SimpleZipService.createZip(from: urls, outputName: "HEIC轉換結果") { result in
                 self.isCreatingZip = false
-                
+
                 switch result {
                 case .success(let zipURL):
                     shareFiles(urls: [zipURL], description: "使用 HEIC 轉檔專家轉換並打包的圖片")
-                    
+
                     // 分享完成後清理臨時檔案
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
                         SimpleZipService.cleanupTempFile(at: zipURL)
                     }
-                    
+
                 case .failure(let error):
                     self.zipError = error
                     self.showZipError = true
@@ -253,7 +253,7 @@ struct ResultsView: View {
             }
         }
     }
-    
+
     private func saveAllToPhotoLibrary() {
         Task {
             do {
@@ -273,7 +273,7 @@ struct ResultsView: View {
             }
         }
     }
-    
+
     private func saveSelectedToPhotoLibrary() {
         Task {
             do {
@@ -294,7 +294,7 @@ struct ResultsView: View {
             }
         }
     }
-    
+
     private func saveSingleToPhotoLibrary(result: ConversionResult) async {
         do {
             try await PhotoLibraryService.shared.saveImageToPhotoLibrary(at: result.outputURL)
@@ -313,20 +313,20 @@ struct ResultsView: View {
 // MARK: - 一鍵清除全部按鈕視圖
 struct ClearAllButtonView: View {
     let onClearAll: () -> Void
-    
+
     var body: some View {
         Button(action: onClearAll) {
             HStack(spacing: 12) {
                 Image(systemName: "trash.fill")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
-                
+
                 Text("一鍵清除全部")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
-                
+
                 Spacer()
-                
+
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.8))
@@ -369,7 +369,7 @@ struct ResultsEmptyStateView: View {
     var body: some View {
         VStack(spacing: 32) {
             Spacer()
-            
+
             // 精美的空狀態插圖
             ZStack {
                 // 背景圓圈
@@ -385,7 +385,7 @@ struct ResultsEmptyStateView: View {
                         )
                     )
                     .frame(width: 140, height: 140)
-                
+
                 // 中間圓圈
                 Circle()
                     .fill(
@@ -399,7 +399,7 @@ struct ResultsEmptyStateView: View {
                         )
                     )
                     .frame(width: 100, height: 100)
-                
+
                 // 圖標
                 Image(systemName: "photo.badge.checkmark.fill")
                     .font(.system(size: 42, weight: .light))
@@ -411,20 +411,20 @@ struct ResultsEmptyStateView: View {
                         )
                     )
             }
-            
+
             // 文字描述
             VStack(spacing: 16) {
                 Text("還沒有轉換記錄")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
-                
+
                 Text("轉換完成的圖片會出現在這裡\n方便您查看和分享")
                     .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(6)
             }
-            
+
             Spacer()
         }
         .padding(.horizontal, 32)
@@ -434,7 +434,7 @@ struct ResultsEmptyStateView: View {
 // MARK: - 結果統計卡片視圖
 struct ResultsStatsCardView: View {
     let stats: BatchConversionStats
-    
+
     var body: some View {
         VStack(spacing: 16) {
             // 標題
@@ -443,12 +443,12 @@ struct ResultsStatsCardView: View {
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
                 Spacer()
-                
+
                 Image(systemName: "chart.bar.fill")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.blue)
             }
-            
+
             // 統計數據
             HStack(spacing: 20) {
                 ResultsStatItemView(
@@ -457,14 +457,14 @@ struct ResultsStatsCardView: View {
                     label: "成功",
                     color: .green
                 )
-                
+
                 ResultsStatItemView(
                     icon: "clock.fill",
                     value: String(format: "%.1fs", stats.averageProcessingTime),
                     label: "平均時間",
                     color: .blue
                 )
-                
+
                 ResultsStatItemView(
                     icon: "arrow.down.circle.fill",
                     value: ByteCountFormatter.string(fromByteCount: abs(stats.totalSavedSpace), countStyle: .file),
@@ -498,23 +498,23 @@ struct ResultsStatsCardView: View {
     }
 }
 
-// MARK: - 結果統計項目視圖  
+// MARK: - 結果統計項目視圖
 struct ResultsStatItemView: View {
     let icon: String
     let value: String
     let label: String
     let color: Color
-    
+
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(color)
-            
+
             Text(value)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
-            
+
             Text(label)
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(.secondary)
@@ -532,7 +532,7 @@ struct EnhancedResultRowView: View {
     let onDelete: () -> Void
     let onSaveToPhotoLibrary: () -> Void
     @State private var showingPreview = false
-    
+
     var body: some View {
         HStack(spacing: 16) {
             // 選擇模式的 checkbox
@@ -545,7 +545,7 @@ struct EnhancedResultRowView: View {
                 }
                 .buttonStyle(.plain)
             }
-            
+
             // 檔案縮圖或圖標
             Button {
                 if isSelectionMode {
@@ -604,51 +604,61 @@ struct EnhancedResultRowView: View {
                 }
             }
             .buttonStyle(.plain)
-            
+
             // 檔案資訊
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 // 檔案名稱
                 Text(result.originalFile.name)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
                     .lineLimit(1)
-                
-                // 詳細資訊
-                HStack(spacing: 12) {
-                    // 空間變化
-                    Label {
-                        Text(result.savedSpaceString)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                    } icon: {
-                        Image(systemName: result.savedSpace >= 0 ? "arrow.down.circle" : "arrow.up.circle")
-                            .font(.system(size: 11, weight: .medium))
+
+                // 空間變化標籤
+                HStack(spacing: 6) {
+                    Image(systemName: result.savedSpace >= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
+                        .font(.system(size: 14, weight: .medium))
+                    
+                    Text(result.savedSpace >= 0 ? "節省" : "增加")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                    
+                    Text(result.savedSpaceString)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(result.savedSpace >= 0 ? .green : .orange)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill((result.savedSpace >= 0 ? Color.green : Color.orange).opacity(0.1))
+                )
+
+                // 檔案大小資訊 - 使用兩行顯示
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text("原始大小")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                        
+                        Text(ByteCountFormatter.string(fromByteCount: result.originalSize, countStyle: .file))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(.secondary)
                     }
-                    .foregroundColor(result.savedSpace >= 0 ? .green : .orange)
+                    
+                    HStack(spacing: 6) {
+                        Text("輸出大小")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.primary.opacity(0.7))
+                        
+                        Text(ByteCountFormatter.string(fromByteCount: result.outputSize, countStyle: .file))
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+                    }
                 }
-                
-                // 檔案大小資訊
-                HStack(spacing: 2) {
-                    Text("原始:")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                    
-                    Text(ByteCountFormatter.string(fromByteCount: result.originalSize, countStyle: .file))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(.secondary)
-                    
-                    Text("→")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 2)
-                    
-                    Text(ByteCountFormatter.string(fromByteCount: result.outputSize, countStyle: .file))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
-                }
+                .padding(.leading, 2)
             }
-            
+
             Spacer()
-            
+
             // 操作按鈕（非選擇模式時顯示）
             if !isSelectionMode {
                 HStack(spacing: 8) {
@@ -661,7 +671,7 @@ struct EnhancedResultRowView: View {
                             .foregroundColor(.blue)
                     }
                     .buttonStyle(ActionButtonStyle(backgroundColor: .blue))
-                    
+
                     // 儲存到相簿按鈕
                     Button {
                         onSaveToPhotoLibrary()
@@ -671,7 +681,7 @@ struct EnhancedResultRowView: View {
                             .foregroundColor(.green)
                     }
                     .buttonStyle(ActionButtonStyle(backgroundColor: .green))
-                    
+
                     // 刪除按鈕
                     Button {
                         onDelete()
@@ -715,7 +725,7 @@ struct EnhancedResultRowView: View {
 // MARK: - 操作按鈕樣式
 struct ActionButtonStyle: ButtonStyle {
     let backgroundColor: Color
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .frame(width: 36, height: 36)
@@ -740,11 +750,11 @@ struct ImagePreviewView: View {
     @State private var lastScale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
-    
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            
+
             if let uiImage = UIImage(contentsOfFile: imageURL.path) {
                 Image(uiImage: uiImage)
                     .resizable()
@@ -783,7 +793,7 @@ struct ImagePreviewView: View {
                 ProgressView()
                     .tint(.white)
             }
-            
+
             // 關閉按鈕
             VStack {
                 HStack {
@@ -822,7 +832,7 @@ struct PremiumBackgroundView: View {
         ZStack {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea(.all)
-            
+
             LinearGradient(
                 colors: [
                     Color.blue.opacity(0.02),
@@ -839,7 +849,7 @@ struct PremiumBackgroundView: View {
 
 struct ResultRowView: View {
     let result: ConversionResult
-    
+
     var body: some View {
         HStack(spacing: AppSpacing.md) {
             // 檔案圖示
@@ -847,12 +857,12 @@ struct ResultRowView: View {
                 RoundedRectangle(cornerRadius: AppRadius.sm)
                     .fill(AppColors.softGradient)
                     .frame(width: 54, height: 54)
-                
+
                 Image(systemName: "photo.fill")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(AppColors.primaryGradient)
             }
-            
+
             // 檔案資訊
             VStack(alignment: .leading, spacing: 4) {
                 Text(result.originalFile.name)
@@ -862,7 +872,7 @@ struct ResultRowView: View {
                         dark: AppColors.darkTextPrimary
                     ))
                     .lineLimit(1)
-                
+
                 HStack(spacing: AppSpacing.xs) {
                     // 處理時間
                     HStack(spacing: 2) {
@@ -875,19 +885,19 @@ struct ResultRowView: View {
                         light: AppColors.textSecondary,
                         dark: AppColors.darkTextSecondary
                     ))
-                    
+
                     Text("•")
                         .foregroundColor(AppColors.textTertiary)
-                    
+
                     // 空間節省
                     Text(result.savedSpaceString)
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundColor(result.savedSpace > 0 ? AppColors.successGreen : AppColors.warningOrange)
                 }
             }
-            
+
             Spacer()
-            
+
             // 分享按鈕
             Button(action: {
                 handleShareFile()
@@ -922,7 +932,7 @@ struct ResultRowView: View {
                 )
         )
     }
-    
+
     private func handleShareFile() {
         shareFile(url: result.outputURL)
     }
@@ -934,7 +944,7 @@ func shareFile(url: URL) {
         print("❌ 檔案不存在：\(url.path)")
         return
     }
-    
+
     shareFiles(urls: [url], description: "使用 HEIC 轉檔專家轉換的圖片 🎉")
 }
 
@@ -942,19 +952,19 @@ func shareFiles(urls: [URL], description: String) {
     // 準備分享內容
     var activityItems: [Any] = urls
     activityItems.insert(description, at: 0)
-    
+
     let activityViewController = UIActivityViewController(
         activityItems: activityItems,
         applicationActivities: nil
     )
-    
+
     // 排除一些不需要的分享選項
     activityViewController.excludedActivityTypes = [
         .assignToContact,
         .openInIBooks,
         .addToReadingList
     ]
-    
+
     // 為 iPad 設定 popover
     if UIDevice.current.userInterfaceIdiom == .pad {
         activityViewController.popoverPresentationController?.sourceView = UIView()
@@ -966,18 +976,18 @@ func shareFiles(urls: [URL], description: String) {
         )
         activityViewController.popoverPresentationController?.permittedArrowDirections = []
     }
-    
+
     // 呈現分享界面
     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
        let window = windowScene.windows.first,
        let rootViewController = window.rootViewController {
-        
+
         // 找到最頂層的 view controller
         var topController = rootViewController
         while let presentedViewController = topController.presentedViewController {
             topController = presentedViewController
         }
-        
+
         topController.present(activityViewController, animated: true)
     }
 }
@@ -990,7 +1000,7 @@ struct SelectionToolbarView: View {
     let onCreateZip: () -> Void
     let isSavingToPhotoLibrary: Bool
     let onSaveToPhotoLibrary: () -> Void
-    
+
     private var buttonText: String {
         if isCreatingZip {
             return shouldAutoSplit ? "智能分割中..." : "打包中..."
@@ -998,7 +1008,7 @@ struct SelectionToolbarView: View {
             return shouldAutoSplit ? "智能分割打包" : "打包分享"
         }
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // 分隔線
@@ -1015,7 +1025,7 @@ struct SelectionToolbarView: View {
                     )
                 )
                 .frame(height: 0.5)
-            
+
             // 主要內容區域
             ZStack {
                 // 背景毛玻璃效果
@@ -1031,7 +1041,7 @@ struct SelectionToolbarView: View {
                             endPoint: .bottom
                         )
                     )
-                
+
                 // 內容
                 HStack(spacing: 0) {
                     // 左側：已選擇項目資訊
@@ -1040,13 +1050,13 @@ struct SelectionToolbarView: View {
                             Text("已選擇")
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundColor(.secondary)
-                            
+
                             if shouldAutoSplit {
                                 HStack(spacing: 2) {
                                     Image(systemName: "scissors")
                                         .font(.system(size: 10, weight: .medium))
                                         .foregroundColor(.orange)
-                                    
+
                                     Text("智能分割")
                                         .font(.system(size: 10, weight: .semibold, design: .rounded))
                                         .foregroundColor(.orange)
@@ -1059,21 +1069,21 @@ struct SelectionToolbarView: View {
                                 )
                             }
                         }
-                        
+
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.blue)
-                            
+
                             Text("\(selectedCount) 個項目")
                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .foregroundColor(.primary)
                                 .animation(.easeInOut(duration: 0.3), value: selectedCount)
                         }
                     }
-                    
+
                     Spacer()
-                    
+
                     // 右側：操作按鈕
                     HStack(spacing: 12) {
                         // 儲存到相簿按鈕
@@ -1091,7 +1101,7 @@ struct SelectionToolbarView: View {
                                     }
                                 }
                                 .frame(width: 18, height: 18)
-                                
+
                                 Text(isSavingToPhotoLibrary ? "儲存中..." : "存相簿")
                                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                                     .foregroundColor(.white)
@@ -1130,7 +1140,7 @@ struct SelectionToolbarView: View {
                         }
                         .disabled(selectedCount == 0 || isSavingToPhotoLibrary)
                         .buttonStyle(.plain)
-                        
+
                         // 打包分享按鈕
                         Button(action: onCreateZip) {
                             HStack(spacing: 8) {
@@ -1147,7 +1157,7 @@ struct SelectionToolbarView: View {
                                     }
                                 }
                                 .frame(width: 18, height: 18)
-                                
+
                                 // 文字
                                 Text(buttonText)
                                     .font(.system(size: 15, weight: .semibold, design: .rounded))
@@ -1158,7 +1168,7 @@ struct SelectionToolbarView: View {
                             .background(
                                 RoundedRectangle(cornerRadius: 24)
                                     .fill(
-                                        selectedCount > 0 && !isCreatingZip ? 
+                                        selectedCount > 0 && !isCreatingZip ?
                                         LinearGradient(
                                             colors: [
                                                 Color.blue,
@@ -1174,7 +1184,7 @@ struct SelectionToolbarView: View {
                                         )
                                     )
                                     .shadow(
-                                        color: selectedCount > 0 && !isCreatingZip ? 
+                                        color: selectedCount > 0 && !isCreatingZip ?
                                             Color.blue.opacity(0.4) : Color.clear,
                                         radius: selectedCount > 0 && !isCreatingZip ? 6 : 0,
                                         x: 0,
