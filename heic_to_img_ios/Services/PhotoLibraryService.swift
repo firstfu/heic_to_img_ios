@@ -1,6 +1,9 @@
 import Foundation
 import Photos
 import UIKit
+import CoreImage
+import ImageIO
+import UniformTypeIdentifiers
 
 class PhotoLibraryService {
     
@@ -33,9 +36,14 @@ class PhotoLibraryService {
             throw PhotoLibraryError.fileNotFound
         }
         
+        let tempURL = try await createImageWithCurrentTimestamp(from: url)
+        
         try await PHPhotoLibrary.shared().performChanges {
-            PHAssetCreationRequest.creationRequestForAssetFromImage(atFileURL: url)
+            let request = PHAssetCreationRequest.creationRequestForAssetFromImage(atFileURL: tempURL)
+            request?.creationDate = Date()
         }
+        
+        try? FileManager.default.removeItem(at: tempURL)
     }
     
     func saveMultipleImagesToPhotoLibrary(urls: [URL]) async throws {
@@ -49,11 +57,70 @@ class PhotoLibraryService {
             throw PhotoLibraryError.noValidFiles
         }
         
+        var tempURLs: [URL] = []
+        
+        for url in validURLs {
+            let tempURL = try await createImageWithCurrentTimestamp(from: url)
+            tempURLs.append(tempURL)
+        }
+        
         try await PHPhotoLibrary.shared().performChanges {
-            for url in validURLs {
-                PHAssetCreationRequest.creationRequestForAssetFromImage(atFileURL: url)
+            for tempURL in tempURLs {
+                let request = PHAssetCreationRequest.creationRequestForAssetFromImage(atFileURL: tempURL)
+                request?.creationDate = Date()
             }
         }
+        
+        for tempURL in tempURLs {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+    }
+    
+    private func createImageWithCurrentTimestamp(from sourceURL: URL) async throws -> URL {
+        guard let imageSource = CGImageSourceCreateWithURL(sourceURL as CFURL, nil),
+              let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil),
+              let imageType = CGImageSourceGetType(imageSource) else {
+            throw PhotoLibraryError.fileNotFound
+        }
+        
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let filename = "\(UUID().uuidString)_\(Int(Date().timeIntervalSince1970)).jpg"
+        let tempURL = tempDirectory.appendingPathComponent(filename)
+        
+        // 保留原始圖片的所有 metadata，包括方向資訊
+        let originalMetadata = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any] ?? [:]
+        
+        // 更新時間戳記但保留其他 metadata
+        var updatedMetadata = originalMetadata
+        
+        let currentDate = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        let dateString = dateFormatter.string(from: currentDate)
+        
+        // 更新 EXIF 資訊
+        var exifDict = updatedMetadata[kCGImagePropertyExifDictionary as String] as? [String: Any] ?? [:]
+        exifDict[kCGImagePropertyExifDateTimeOriginal as String] = dateString
+        exifDict[kCGImagePropertyExifDateTimeDigitized as String] = dateString
+        updatedMetadata[kCGImagePropertyExifDictionary as String] = exifDict
+        
+        // 更新 TIFF 資訊
+        var tiffDict = updatedMetadata[kCGImagePropertyTIFFDictionary as String] as? [String: Any] ?? [:]
+        tiffDict[kCGImagePropertyTIFFDateTime as String] = dateString
+        updatedMetadata[kCGImagePropertyTIFFDictionary as String] = tiffDict
+        
+        // 創建新的圖片檔案，保留所有 metadata
+        guard let imageDestination = CGImageDestinationCreateWithURL(tempURL as CFURL, UTType.jpeg.identifier as CFString, 1, nil) else {
+            throw PhotoLibraryError.fileNotFound
+        }
+        
+        CGImageDestinationAddImage(imageDestination, cgImage, updatedMetadata as CFDictionary)
+        
+        guard CGImageDestinationFinalize(imageDestination) else {
+            throw PhotoLibraryError.fileNotFound
+        }
+        
+        return tempURL
     }
 }
 
