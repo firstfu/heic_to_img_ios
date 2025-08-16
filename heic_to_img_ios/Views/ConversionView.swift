@@ -971,7 +971,7 @@ struct QualitySettingsPopover: View {
                                                     dark: AppColors.darkTextPrimary
                                                 ))
                                             
-                                            Text("保留 EXIF 資料如拍攝時間、地點等")
+                                            Text("保留 EXIF 資料如地點等（儲存時更新時間以便查找）")
                                                 .font(.system(size: 11, weight: .regular, design: .rounded))
                                                 .foregroundColor(Color.dynamic(
                                                     light: AppColors.textSecondary,
