@@ -75,6 +75,23 @@ struct ProcessingLimits {
     }
 }
 
+// MARK: - 免費版限制常數
+/// 定義免費版的功能限制
+struct FreeTierLimits {
+    /// 免費版單次轉換最大檔案數量
+    static let maxBatchFiles: Int = 1
+    /// 免費版每日轉換次數限制
+    static let dailyConversionLimit: Int = 3
+    /// 免費版可用的輸出格式
+    static let allowedFormats: [ConversionFormat] = [.jpeg]
+    /// 免費版固定品質
+    static let fixedQuality: Double = 0.8
+    /// 免費版是否保留 EXIF
+    static let preserveMetadata: Bool = false
+    /// 免費版是否可調整尺寸
+    static let canResize: Bool = false
+}
+
 // MARK: - 轉換格式
 /// 支援的圖片轉換格式列舉
 /// 定義了 HEIC 可以轉換的目標格式

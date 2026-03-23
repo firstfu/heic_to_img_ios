@@ -29,6 +29,9 @@ struct HeicMasterProApp: App {
     /// 應用程式狀態對象，管理主題、UI 狀態等全局設定
     @StateObject private var appState = AppState()
 
+    /// StoreKit 購買管理服務
+    @StateObject private var storeManager = StoreManager.shared
+
     /// 控制啟動畫面的顯示狀態
     @State private var isShowingLaunchScreen = true
 
@@ -42,6 +45,8 @@ struct HeicMasterProApp: App {
                     .environmentObject(conversionSettings)
                     // 將應用狀態注入到環境中，供子視圖使用
                     .environmentObject(appState)
+                    // 將 StoreKit 購買管理注入到環境中
+                    .environmentObject(storeManager)
                     // 根據應用狀態設定顏色主題（淺色/深色模式）
                     .preferredColorScheme(appState.colorScheme)
                     .opacity(isShowingLaunchScreen ? 0 : 1)

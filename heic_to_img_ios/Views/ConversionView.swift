@@ -13,7 +13,8 @@ struct ConversionView: View {
     @EnvironmentObject private var settings: ConversionSettings
     @StateObject private var fileManagerService = FileManagerService.shared
     @StateObject private var imageConverter = ImageConverter.shared
-    
+    @EnvironmentObject private var storeManager: StoreManager
+
     @State private var showFileImporter = false
     @State private var showPhotoPicker = false
     @State private var showError = false
@@ -69,10 +70,10 @@ struct ConversionView: View {
                                 conversionProgressView
                             }
                             
-                            // MVP 版本：註解掉免費版限制提示
-                            // if !appState.isPro && !appState.isConverting {
-                            //     proUpgradePrompt
-                            // }
+                            // 免費版限制提示
+                            if !appState.isPro && !appState.isConverting {
+                                proUpgradePrompt
+                            }
                         }
                         .padding(.horizontal, AppSpacing.lg)
                     }
@@ -518,13 +519,29 @@ struct ConversionView: View {
     
     private func handleSelectedFiles(_ files: [FileItem]) {
         let validation = FilePickerService.shared.validateFiles(files)
-        
+
         if !validation.invalid.isEmpty {
             errorMessage = validation.invalid.joined(separator: "\n")
             showError = true
         }
-        
+
         if !validation.valid.isEmpty {
+            // 免費版限制：只能選 1 個檔案
+            if !appState.isPro {
+                let maxFiles = FreeTierLimits.maxBatchFiles
+                let totalFiles = appState.selectedFiles.count + validation.valid.count
+                if totalFiles > maxFiles {
+                    let availableSlots = maxFiles - appState.selectedFiles.count
+                    if availableSlots > 0 {
+                        let limitedFiles = Array(validation.valid.prefix(availableSlots))
+                        appState.addFiles(limitedFiles)
+                    }
+                    errorMessage = "免費版僅支援單檔案轉換。\n\n升級專業版可批次轉換最多 \(ProcessingLimits.maxBatchFiles) 個檔案。"
+                    showError = true
+                    return
+                }
+            }
+
             // 檢查是否超過檔案數量限制
             let totalFiles = appState.selectedFiles.count + validation.valid.count
             if totalFiles > ProcessingLimits.maxBatchFiles {
@@ -578,17 +595,18 @@ struct ConversionView: View {
     }
     
     private func startConversion() {
-        // MVP 版本：註解掉 Pro 版本限制檢查
-        // if !appState.isPro && appState.selectedFiles.count > 1 {
-        //     appState.showProUpgrade = true
-        //     return
-        // }
-        // 
-        // if !appState.isPro && appState.remainingFreeConversions <= 0 {
-        //     appState.showProUpgrade = true
-        //     return
-        // }
-        
+        // 免費版限制檢查（AppState.startConversion 也會檢查，這裡提前攔截以提供更好的 UX）
+        if !appState.isPro {
+            if appState.selectedFiles.count > FreeTierLimits.maxBatchFiles {
+                appState.showProUpgrade = true
+                return
+            }
+            if !DailyUsageTracker.shared.canConvert {
+                appState.showProUpgrade = true
+                return
+            }
+        }
+
         appState.startConversion(with: settings)
         
         // 開始批次轉換
@@ -605,7 +623,10 @@ struct ConversionView: View {
                 switch result {
                 case .success(let results):
                     print("✅ 轉換成功，共 \(results.count) 個檔案")
-                    
+
+                    // 記錄免費版轉換次數
+                    appState.recordFreeConversion(count: results.count)
+
                     // 直接將轉換結果添加到狀態中
                     appState.conversionResults.append(contentsOf: results)
                     
@@ -832,6 +853,19 @@ struct QualitySettingsPopover: View {
                             HStack(spacing: AppSpacing.sm) {
                                 ForEach(ConversionFormat.allCases, id: \.self) { format in
                                     formatButton(format)
+                                        .disabled(!appState.isPro && format != .jpeg)
+                                        .overlay(
+                                            Group {
+                                                if !appState.isPro && format != .jpeg {
+                                                    Image(systemName: "lock.fill")
+                                                        .font(.system(size: 12))
+                                                        .foregroundColor(AppColors.textSecondary)
+                                                        .padding(4)
+                                                        .background(Circle().fill(Color(.systemBackground)))
+                                                        .offset(x: 30, y: -15)
+                                                }
+                                            }
+                                        )
                                 }
                             }
                         }
@@ -894,9 +928,10 @@ struct QualitySettingsPopover: View {
                                         }
                                         .padding(.horizontal, 16) // match Slider's intrinsic insets
                                         
-                                        // 滑桿
+                                        // 滑桿（免費版禁用）
                                         Slider(value: $settings.jpegQuality, in: 0.5...1.0, step: 0.25)
                                             .tint(.clear)
+                                            .disabled(!appState.isPro)
                                     }
                                     // Provide enough vertical space for the thumb to align with the track
                                     .frame(height: 44)
@@ -923,11 +958,11 @@ struct QualitySettingsPopover: View {
                                 
                                 // 品質說明
                                 HStack(spacing: AppSpacing.xs) {
-                                    Image(systemName: "info.circle.fill")
+                                    Image(systemName: appState.isPro ? "info.circle.fill" : "lock.fill")
                                         .font(.system(size: 12))
-                                        .foregroundColor(AppColors.primaryBlue.opacity(0.6))
-                                    
-                                    Text(qualityDescription)
+                                        .foregroundColor(appState.isPro ? AppColors.primaryBlue.opacity(0.6) : AppColors.warningOrange)
+
+                                    Text(appState.isPro ? qualityDescription : "升級專業版可自由調整品質")
                                         .font(.system(size: 12, weight: .medium, design: .rounded))
                                         .foregroundColor(Color.dynamic(
                                             light: AppColors.textSecondary,
@@ -937,7 +972,7 @@ struct QualitySettingsPopover: View {
                                 .padding(AppSpacing.sm)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(AppColors.primaryBlue.opacity(0.05))
+                                        .fill(appState.isPro ? AppColors.primaryBlue.opacity(0.05) : AppColors.warningOrange.opacity(0.05))
                                 )
                             }
                             .padding(.horizontal, AppSpacing.lg)

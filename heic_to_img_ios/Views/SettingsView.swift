@@ -33,57 +33,43 @@ struct SettingsView: View {
                 .ignoresSafeArea()
                 
                 Form {
-                // MVP 版本：顯示免費完整版本狀態
+                // Pro 版本狀態
                 Section {
                     HStack {
                         VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                            Text("HEIC 轉檔專家")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundColor(AppColors.brandBlue)
-                            
-                            Text("免費完整版")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundColor(AppColors.successGreen)
+                            if appState.isPro {
+                                Text("HEIC 轉檔專家 Pro")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundColor(AppColors.brandBlue)
+
+                                Text("專業版已啟用")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppColors.successGreen)
+                            } else {
+                                Text("HEIC 轉檔專家")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Color.dynamic(
+                                        light: AppColors.textPrimary,
+                                        dark: AppColors.darkTextPrimary
+                                    ))
+
+                                Text("今日剩餘 \(appState.remainingFreeConversions) 次免費轉換")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppColors.warningOrange)
+                            }
                         }
-                        
+
                         Spacer()
+
+                        if !appState.isPro {
+                            Button("升級") {
+                                appState.showProUpgrade = true
+                            }
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(AppColors.brandBlue)
+                        }
                     }
                 }
-                
-                // 原始 Pro 狀態區塊 - 已註解
-                // Section {
-                //     HStack {
-                //         VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                //             if appState.isPro {
-                //                 Text("HEIC 轉檔專家 Pro")
-                //                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                //                     .foregroundColor(AppColors.brandBlue)
-                //                 
-                //                 Text("專業版已啟用")
-                //                     .font(.system(size: 12, weight: .medium, design: .rounded))
-                //                     .foregroundColor(AppColors.successGreen)
-                //             } else {
-                //                 Text("HEIC 轉檔專家")
-                //                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                //                     .foregroundColor(AppColors.textPrimary)
-                //                 
-                //                 Text("剩餘 \(appState.remainingFreeConversions) 次轉換")
-                //                     .font(.system(size: 12, weight: .medium, design: .rounded))
-                //                     .foregroundColor(AppColors.warningOrange)
-                //             }
-                //         }
-                //         
-                //         Spacer()
-                //         
-                //         if !appState.isPro {
-                //             Button("升級") {
-                //                 appState.showProUpgrade = true
-                //             }
-                //             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                //             .foregroundColor(AppColors.brandBlue)
-                //         }
-                //     }
-                // }
                 
                 // 批次處理設定
                 Section(header: Text("批次處理設定").foregroundColor(Color.dynamic(
@@ -196,11 +182,18 @@ struct SettingsView: View {
                             .foregroundColor(AppColors.brandBlue)
                     }
                     
+                    if !appState.isPro {
+                        Button("恢復購買") {
+                            appState.restorePurchases()
+                        }
+                        .foregroundColor(AppColors.brandBlue)
+                    }
+
                     Button("重置設定") {
                         settings.reset()
                     }
                     .foregroundColor(AppColors.warningOrange)
-                    
+
                     Button("清除轉換記錄") {
                         showClearConfirmation = true
                     }

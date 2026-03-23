@@ -41,10 +41,9 @@ struct MainTabView: View {
                 }
             }
         }
-        // MVP 版本：註解掉 Pro 升級 sheet
-        // .sheet(isPresented: $appState.showProUpgrade) {
-        //     ProUpgradeView()
-        // }
+        .sheet(isPresented: $appState.showProUpgrade) {
+            ProUpgradeView()
+        }
     }
     
     private var backgroundGradient: some View {

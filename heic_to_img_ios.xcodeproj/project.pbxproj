@@ -252,11 +252,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = WY468E45SJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = HeicMaster;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "本應用需要將轉換後的照片儲存到您的相簿。";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "本應用需要存取您的相簿，以讀取 HEIC 照片進行格式轉換。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -269,7 +270,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.firstfu.com.heic-to-img-ios";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -289,11 +290,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = WY468E45SJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = HeicMaster;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "本應用需要將轉換後的照片儲存到您的相簿。";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "本應用需要存取您的相簿，以讀取 HEIC 照片進行格式轉換。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -306,7 +308,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				OTHER_SWIFT_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.firstfu.com.heic-to-img-ios";
 				PRODUCT_NAME = "$(TARGET_NAME)";

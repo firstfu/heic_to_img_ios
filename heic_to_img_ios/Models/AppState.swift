@@ -74,30 +74,45 @@ class AppState: ObservableObject {
     @Published var showErrorAlert: Bool = false
     
     // MARK: - Pro 版本狀態
-    /// 是否已購買 Pro 版本
-    // MVP 版本：預設為 true，讓所有用戶都能使用完整功能
-    @Published var isPro: Bool = true // false
+    /// 是否已購買 Pro 版本（從 StoreManager 取得）
+    var isPro: Bool {
+        StoreManager.shared.isPro
+    }
     /// 是否顯示 Pro 版本升級畫面
-    // MVP 版本：不顯示升級畫面
     @Published var showProUpgrade: Bool = false
-    /// 免費版本剩餘的轉換次數
-    // MVP 版本：無限制
-    @Published var remainingFreeConversions: Int = 999999 // 3
-    
-    /// 初始化方法，載入用戶偏好設定
+    /// 免費版本剩餘的轉換次數（從 DailyUsageTracker 取得）
+    var remainingFreeConversions: Int {
+        DailyUsageTracker.shared.remainingConversions
+    }
+
+    /// Combine 訂閱存儲
+    private var cancellables = Set<AnyCancellable>()
+
+    /// 初始化方法，載入用戶偏好設定並訂閱 StoreManager 狀態變化
     init() {
         loadUserPreferences()
+
+        // 訂閱 StoreManager 的狀態變化，轉發給 AppState 的觀察者
+        StoreManager.shared.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        // 訂閱 DailyUsageTracker 的狀態變化
+        DailyUsageTracker.shared.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
-    
+
     /// 從 UserDefaults 載入用戶偏好設定
-    /// 包含首次啟動狀態、Pro 版本狀態和免費轉換次數
     private func loadUserPreferences() {
-        // 從 UserDefaults 載入用戶設定
         isFirstLaunch = !UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
-        // MVP 版本：預設為 Pro
-        isPro = true // UserDefaults.standard.bool(forKey: "isPro")
-        remainingFreeConversions = 999999 // UserDefaults.standard.object(forKey: "remainingFreeConversions") as? Int ?? 3
-        
+
         if isFirstLaunch {
             UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
         }
@@ -128,26 +143,28 @@ class AppState: ObservableObject {
     /// 開始轉換作業，檢查 Pro 版本限制
     /// - Parameter settings: 轉換設定參數
     func startConversion(with settings: ConversionSettings) {
-        // MVP 版本：註解掉 Pro 版本限制檢查
-        // if !isPro && selectedFiles.count > 1 {
-        //     showProUpgrade = true
-        //     return
-        // }
-        // 
-        // if !isPro && remainingFreeConversions <= 0 {
-        //     showProUpgrade = true
-        //     return
-        // }
-        
+        // 免費版限制檢查
+        if !isPro {
+            // 檢查批次限制（免費版僅支援單檔案）
+            if selectedFiles.count > FreeTierLimits.maxBatchFiles {
+                showProUpgrade = true
+                return
+            }
+            // 檢查每日轉換次數限制
+            if !DailyUsageTracker.shared.canConvert {
+                showProUpgrade = true
+                return
+            }
+            // 免費版強制設定
+            settings.outputFormat = .jpeg
+            settings.jpegQuality = FreeTierLimits.fixedQuality
+            settings.preserveMetadata = FreeTierLimits.preserveMetadata
+            settings.shouldResize = false
+        }
+
         isConverting = true
         conversionJobs = selectedFiles.map { ConversionJob(fileItem: $0, settings: settings) }
         overallProgress = 0.0
-        
-        // MVP 版本：註解掉免費轉換次數更新
-        // if !isPro {
-        //     remainingFreeConversions = max(0, remainingFreeConversions - selectedFiles.count)
-        //     UserDefaults.standard.set(remainingFreeConversions, forKey: "remainingFreeConversions")
-        // }
     }
     
     func updateJobProgress(_ jobId: UUID, progress: Double) {
@@ -236,15 +253,33 @@ class AppState: ObservableObject {
     }
     
     // MARK: - Pro 版本管理
+
+    /// 執行購買專業版流程
     func upgradeToPro() {
-        // MVP 版本：已預設為 Pro
-        isPro = true
-        UserDefaults.standard.set(true, forKey: "isPro")
-        showProUpgrade = false
+        Task { @MainActor in
+            let success = await StoreManager.shared.purchase()
+            if success {
+                showProUpgrade = false
+            }
+        }
     }
-    
+
+    /// 恢復之前的購買紀錄
     func restorePurchases() {
-        // TODO: 實作 In-App Purchase 恢復邏輯
+        Task { @MainActor in
+            await StoreManager.shared.restorePurchases()
+            if isPro {
+                showProUpgrade = false
+            }
+        }
+    }
+
+    /// 免費版轉換完成後記錄使用次數
+    /// - Parameter count: 完成的轉換數量
+    func recordFreeConversion(count: Int) {
+        if !isPro {
+            DailyUsageTracker.shared.recordConversion(count: count)
+        }
     }
     
     // MARK: - 選擇模式管理
