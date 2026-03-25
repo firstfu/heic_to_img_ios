@@ -16,12 +16,15 @@
       "Bash(open:*)",
       "Bash(identify:*)",
       "Bash(convert:*)",
-      "Bash(magick:*)"
+      "Bash(magick:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
+    "defaultMode": "acceptEdits",
     "additionalDirectories": [
       "/Users/firstfu/Desktop/heic_to_img_workspace/heic_to_img_api"
-    ],
-    "defaultMode": "acceptEdits"
+    ]
   }
 }
