@@ -48,6 +48,12 @@ struct ProUpgradeView: View {
             withAnimation(.easeOut(duration: 0.6)) {
                 showContent = true
             }
+            // 如果產品尚未載入，嘗試重新載入
+            if storeManager.products.isEmpty && !storeManager.isLoading {
+                Task {
+                    await storeManager.loadProducts()
+                }
+            }
         }
         .alert("提示", isPresented: $showErrorAlert) {
             Button("確定") {
@@ -250,95 +256,148 @@ struct ProUpgradeView: View {
 
     private var pricingAndCTASection: some View {
         VStack(spacing: 16) {
-            // 價格卡片
-            VStack(spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(storeManager.proProduct?.displayPrice ?? "NT$ 90")
-                        .font(.system(size: 38, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.dynamic(
-                            light: AppColors.textPrimary,
-                            dark: AppColors.darkTextPrimary
-                        ))
-
-                    Text("/ 永久")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+            if storeManager.isLoading && storeManager.products.isEmpty {
+                // 載入中狀態
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text("正在載入產品資訊...")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundColor(Color.dynamic(
                             light: AppColors.textSecondary,
                             dark: AppColors.darkTextSecondary
                         ))
                 }
+                .padding(.vertical, 20)
+            } else if !storeManager.isLoading && storeManager.products.isEmpty {
+                // 載入失敗狀態
+                VStack(spacing: 12) {
+                    Image(systemName: "wifi.exclamationmark")
+                        .font(.system(size: 32))
+                        .foregroundColor(AppColors.warningOrange)
 
-                Text("買一次，用一輩子，不用訂閱")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.dynamic(
-                        light: AppColors.textTertiary,
-                        dark: AppColors.darkTextSecondary
-                    ))
-            }
-            .opacity(showContent ? 1 : 0)
-            .scaleEffect(showContent ? 1 : 0.9)
+                    Text("無法載入產品資訊")
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.dynamic(
+                            light: AppColors.textPrimary,
+                            dark: AppColors.darkTextPrimary
+                        ))
 
-            // 購買按鈕
-            Button(action: {
-                Task {
-                    let success = await storeManager.purchase()
-                    if success {
-                        presentationMode.wrappedValue.dismiss()
+                    Text("請檢查網路連線後重試")
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundColor(Color.dynamic(
+                            light: AppColors.textSecondary,
+                            dark: AppColors.darkTextSecondary
+                        ))
+
+                    Button(action: {
+                        Task {
+                            await storeManager.loadProducts()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.clockwise")
+                            Text("重新載入")
+                        }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(width: 160, height: 44)
+                        .background(AppColors.primaryBlue)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
-            }) {
-                HStack(spacing: 8) {
-                    if storeManager.isLoading {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Image(systemName: "crown.fill")
-                            .font(.system(size: 15, weight: .semibold))
+                .padding(.vertical, 20)
+            } else {
+                // 正常狀態 - 價格卡片
+                VStack(spacing: 12) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(storeManager.proProduct?.displayPrice ?? "NT$ 90")
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.dynamic(
+                                light: AppColors.textPrimary,
+                                dark: AppColors.darkTextPrimary
+                            ))
+
+                        Text("/ 永久")
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.dynamic(
+                                light: AppColors.textSecondary,
+                                dark: AppColors.darkTextSecondary
+                            ))
                     }
 
-                    Text(storeManager.isLoading ? "處理中..." : "立即升級")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    Text("買一次，用一輩子，不用訂閱")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.dynamic(
+                            light: AppColors.textTertiary,
+                            dark: AppColors.darkTextSecondary
+                        ))
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(
-                    LinearGradient(
-                        colors: [AppColors.primaryBlue, AppColors.primaryPurple],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                .opacity(showContent ? 1 : 0)
+                .scaleEffect(showContent ? 1 : 0.9)
+
+                // 購買按鈕
+                Button(action: {
+                    Task {
+                        let success = await storeManager.purchase()
+                        if success {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        if storeManager.isLoading {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+
+                        Text(storeManager.isLoading ? "處理中..." : "立即升級")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(
+                        LinearGradient(
+                            colors: [AppColors.primaryBlue, AppColors.primaryPurple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(
-                    color: AppColors.primaryBlue.opacity(0.35),
-                    radius: 12,
-                    x: 0,
-                    y: 6
-                )
-            }
-            .disabled(storeManager.isLoading)
-            .scaleEffect(showContent ? 1 : 0.9)
-            .opacity(showContent ? 1 : 0)
-
-            // 恢復購買
-            Button(action: {
-                Task {
-                    await storeManager.restorePurchases()
-                    if storeManager.isPro {
-                        presentationMode.wrappedValue.dismiss()
-                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(
+                        color: AppColors.primaryBlue.opacity(0.35),
+                        radius: 12,
+                        x: 0,
+                        y: 6
+                    )
                 }
-            }) {
-                Text("恢復購買")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.dynamic(
-                        light: AppColors.textSecondary,
-                        dark: AppColors.darkTextSecondary
-                    ))
+                .disabled(storeManager.isLoading)
+                .scaleEffect(showContent ? 1 : 0.9)
+                .opacity(showContent ? 1 : 0)
+
+                // 恢復購買
+                Button(action: {
+                    Task {
+                        await storeManager.restorePurchases()
+                        if storeManager.isPro {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
+                }) {
+                    Text("恢復購買")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.dynamic(
+                            light: AppColors.textSecondary,
+                            dark: AppColors.darkTextSecondary
+                        ))
+                }
+                .disabled(storeManager.isLoading)
+                .opacity(showContent ? 1 : 0)
             }
-            .disabled(storeManager.isLoading)
-            .opacity(showContent ? 1 : 0)
         }
         .padding(.horizontal, 20)
     }

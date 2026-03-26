@@ -95,8 +95,13 @@ class StoreManager: ObservableObject {
     @MainActor
     @discardableResult
     func purchase() async -> Bool {
+        // 如果產品尚未載入，嘗試重新載入一次
+        if proProduct == nil {
+            await loadProducts()
+        }
+
         guard let product = proProduct else {
-            errorMessage = "無法取得產品資訊，請稍後再試"
+            errorMessage = "無法取得產品資訊，請檢查網路連線後重試"
             return false
         }
 
